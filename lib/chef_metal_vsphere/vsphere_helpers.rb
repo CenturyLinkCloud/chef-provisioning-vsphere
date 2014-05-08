@@ -33,6 +33,15 @@ module ChefMetalVsphere
       sleep 1 until port_ready?(vm, wait_on_port)
     end
 
+    def stop_vm(vm)
+      begin
+        vm.ShutdownGuest
+        sleep 2 until vm.runtime.powerState == 'poweredOff'
+      rescue
+        vm.PowerOffVM_Task.wait_for_completion
+      end
+    end
+
     def port_ready?(vm, port)
       vm_ip = vm.guest.ipAddress
       return false if vm_ip.nil?

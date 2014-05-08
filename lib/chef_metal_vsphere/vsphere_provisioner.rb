@@ -131,17 +131,9 @@ module ChefMetalVsphere
         # wait_on_port = bootstrap_options['winrm']['port']
       end
 
-
-
       # TODO compare new options to existing and fail if we cannot change it
       # over (perhaps introduce a boolean that will force a delete and recreate
       # in such a case)
-
-      #
-      # This is where the work gets done:
-      # Find the VM instance or clone one from the template, start the vm, and return the Machine
-      #
-
 
       vm = vm_instance(action_handler, node)
 
@@ -157,6 +149,36 @@ module ChefMetalVsphere
     # Connect to machine without acquiring it
     def connect_to_machine(node)
       machine_for(node)
+    end
+
+    def delete_machine(action_handler, node)
+      if node['normal'] && node['normal']['provisioner_output']
+        provisioner_output = node['normal']['provisioner_output']
+      else
+        provisioner_output = {}
+      end
+      vm_name = provisioner_output['vm_name'] || node['name']
+      vm_folder = provisioner_output['bootstrap_options']['vm_folder']
+      vm = vm_for(node)
+
+      unless vm.nil?
+        action_handler.perform_action "Delete VM [#{vm_folder}/#{vm_name}]" do
+          vm.Destroy_Task.wait_for_completion
+        end
+      end
+    end
+
+    def stop_machine(action_handler, node)
+      if node['normal'] && node['normal']['provisioner_output']
+        provisioner_output = node['normal']['provisioner_output']
+      else
+        provisioner_output = {}
+      end
+      vm_name = provisioner_output['vm_name'] || node['name']
+      vm_folder = provisioner_output['bootstrap_options']['vm_folder']
+      action_handler.perform_action "Guest shutdown and power off VM [#{vm_folder}/#{vm_name}]" do
+        stop_vm(vm_for(node))
+      end
     end
 
     protected
@@ -198,6 +220,7 @@ module ChefMetalVsphere
         ChefMetal::Machine::UnixMachine.new(node, transport_for(node), convergence_strategy_for(node))
       end
     end
+
 
     def vm_for(node)
       bootstrap_options = node['normal']['provisioner_output']['bootstrap_options']
