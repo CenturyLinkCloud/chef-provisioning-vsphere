@@ -30,7 +30,7 @@ module ChefMetalVsphere
         vm.PowerOnVM_Task.wait_for_completion
       end
 
-      #sleep 1 until port_ready?(vm, wait_on_port)
+      sleep 1 until port_ready?(vm, wait_on_port)
     end
 
     def port_ready?(vm, port)
