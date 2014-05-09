@@ -1,7 +1,7 @@
 chef-metal-vsphere
 ==================
 
-This is a [chef-metal](https://github.com/opscode/chef-metal) provisioner for VMware vSphere.
+This is a [chef-metal](https://github.com/opscode/chef-metal) provisioner for [VMware vSphere](http://www.vmware.com/products/vsphere).
 
 Currently, chef-metal-vsphere supports provisioning Unix/ssh guest VMs.
 
@@ -24,24 +24,25 @@ Create or obtain a unix/linux VM template.  The VM template must:
     with_vsphere_provisioner vsphere_host: 'vcenter-host-name',
       vsphere_insecure: true,
       vsphere_user:     'you_user_name',
-      vsphere_password: 'your_mothers_mainden_name' # consider using a chef-vault
+      vsphere_password: 'your_mothers_mainden_name'     # consider using a chef-vault
 
     with_provisioner_options('bootstrap_options' => {
       datacenter:      'datacenter_name',
       cluster:         'cluster_name',
-      resource_pool:   'resource_pool_name', # often the same as the cluster_name
+      resource_pool:   'resource_pool_name',            # often the same as the cluster_name
       datastore:       'datastore_name',
-      template_name:   'name_of_template_vm', # may be a VM or a VM Template
-      template_folder: 'name_of_folder_containing_template_vm',
-      vm_folder:       'name_of_folder_to_place_cloned_machines_into',
-      ssh: {                   # net-ssh start() options
-        user:                  'username_on_vm_with_nopasswd_sudo',
+      template_name:   'name_of_template_vm',           # may be a VM or a VM Template
+      template_folder: 'folder_containing_template_vm',
+      vm_folder:       'folder_to_clone_vms_into',
+
+      ssh: {                                             # net-ssh start() options
+        user:                  'username_on_vm',         # must have nopasswd sudo
         password:              'name_of_your_first_pet', # consider using a chef-vault
         port:                  22,
         auth_methods:          ['password'],
-        user_known_hosts_file: '/dev/null', # don't do this in production
-        paranoid:              false, # don't do this in production, either
-        keys:                  [ ],
+        user_known_hosts_file: '/dev/null',              # don't do this in production
+        paranoid:              false,                    # don't do this in production, either
+        keys:                  [ ],                      # consider using a chef-vault
         keys_only:             false
         }
       })
