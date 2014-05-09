@@ -69,6 +69,11 @@ Create or obtain a unix/linux VM template.  The VM template must:
 
 This will clone your VM template to create two VMware Virtual Machines, "metal_1" and "metal_2", in the vSphere Folder specified by vm_folder, bootstrapped to an empty runlist.  It will then stop (guest shutdown) and delete the vms.
 
+Roadmap
+-------
+
+Check out [TODO.md]
+
 Bugs and Contact
 ----------------
 
