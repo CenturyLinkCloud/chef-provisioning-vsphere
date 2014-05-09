@@ -18,7 +18,6 @@ Create or obtain a unix/linux VM template.  The VM template must:
   - provide a user account with NOPASSWD sudo
 
 ### Example recipe
-
     require 'chef_metal_vsphere'
 
     with_vsphere_provisioner vsphere_host: 'vcenter-host-name',
@@ -74,3 +73,5 @@ Bugs and Contact
 ----------------
 
 Please submit bugs at [https://github.com/RallySoftware-cookbooks/chef-metal-vsphere], contact Brian Dupras on Twitter at @briandupras, email at rallysoftware-cookbooks@rallydev.com.
+
+*Warning* if you get an rbvmomi error regarding VMODL::AnyType, add `gem 'nokogiri', '1.5.5'` to your dependencies.
