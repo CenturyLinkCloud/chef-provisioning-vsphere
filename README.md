@@ -24,7 +24,7 @@ Create or obtain a unix/linux VM template.  The VM template must:
     with_vsphere_provisioner vsphere_host: 'vcenter-host-name',
       vsphere_insecure: true,
       vsphere_user:     'you_user_name',
-      vsphere_password: 'your_mothers_mainden_name'     # consider using a chef-vault
+      vsphere_password: 'your_mothers_maiden_name'     # consider using a chef-vault
 
     with_provisioner_options('bootstrap_options' => {
       datacenter:      'datacenter_name',
