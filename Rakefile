@@ -23,8 +23,8 @@ module Bundler
 
         Bundler.ui.confirm "Pushed #{name} #{version} to #{gem_server}"
       end
-    end
 
-    puts "Monkey patched Bundler::GemHelper#rubygem_push to push to #{gem_server}."
+      puts "Monkey patched Bundler::GemHelper#rubygem_push to push to #{gem_server}."
+    end
   end
 end
