@@ -163,6 +163,7 @@ module ChefMetalVsphere
 
       unless vm.nil?
         action_handler.perform_action "Delete VM [#{vm_folder}/#{vm_name}]" do
+          vm.PowerOffVM_Task.wait_for_completion unless vm.runtime.powerState == 'poweredOff'
           vm.Destroy_Task.wait_for_completion
         end
       end
