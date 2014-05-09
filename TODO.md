@@ -7,7 +7,7 @@ Test framework
   - implement some form of test framework
 
 Clone features
-----------------------
+--------------
 
     :bootstrap_options
       :annotation
@@ -33,6 +33,11 @@ vApp features
   - create/start/stop/delete vApps in recipes
   - clone from existing vApp
   - replace machines in vApp
+
+VM features
+-----------
+
+  - [:stop] with markAsTemplate
 
 Usability
 ---------
