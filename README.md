@@ -72,11 +72,11 @@ This will clone your VM template to create two VMware Virtual Machines, "metal_1
 Roadmap
 -------
 
-Check out [TODO.md]
+Check out [TODO.md](TODO.md)
 
 Bugs and Contact
 ----------------
 
-Please submit bugs at [https://github.com/RallySoftware-cookbooks/chef-metal-vsphere], contact Brian Dupras on Twitter at @briandupras, email at rallysoftware-cookbooks@rallydev.com.
+Please submit bugs at [chef-metal-vpshere](https://github.com/RallySoftware-cookbooks/chef-metal-vsphere), contact Brian Dupras on Twitter at @briandupras, email at rallysoftware-cookbooks@rallydev.com.
 
 *Warning* if you get an rbvmomi error regarding VMODL::AnyType, add `gem 'nokogiri', '1.5.5'` to your dependencies.
