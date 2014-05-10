@@ -137,8 +137,10 @@ module ChefMetalVsphere
 
       vm = vm_instance(action_handler, node)
 
-      action_handler.perform_action "Start VM and wait for ssh [#{vm_folder}/#{vm_name}]" do
-        start_vm(vm, wait_on_port)
+      unless vm_started?(vm, wait_on_port)
+        action_handler.perform_action "Start VM and wait for port #{wait_on_port}" do
+          start_vm(vm, wait_on_port)
+        end
       end
 
       machine = machine_for(node)
@@ -177,8 +179,12 @@ module ChefMetalVsphere
       end
       vm_name = provisioner_output['vm_name'] || node['name']
       vm_folder = provisioner_output['bootstrap_options']['vm_folder']
-      action_handler.perform_action "Guest shutdown and power off VM [#{vm_folder}/#{vm_name}]" do
-        stop_vm(vm_for(node))
+      vm = vm_for(node)
+
+      unless vm_stopped?(vm)
+        action_handler.perform_action "Shutdown guest OS and power off VM [#{vm_folder}/#{vm_name}]" do
+          stop_vm(vm)
+        end
       end
     end
 
@@ -198,7 +204,7 @@ module ChefMetalVsphere
       vm = find_vm(datacenter, vm_folder, vm_name)
       return vm unless vm.nil?
 
-      action_handler.perform_action "Clone a new VM instance for [#{vm_folder}/#{vm_name}]" do
+      action_handler.perform_action "Clone a new VM instance from [#{bootstrap_options['template_folder']}/#{bootstrap_options['template_name']}]" do
         vm = clone_vm(vm_name, bootstrap_options)
       end
 
@@ -215,7 +221,9 @@ module ChefMetalVsphere
     end
 
     def machine_for(node)
-      if is_windows?(vm_for(node))
+      vm = vm_for(node) or raise "VM for node #{node['name']} has not been created!"
+
+      if is_windows?(vm)
         ChefMetal::Machine::WindowsMachine.new(node, transport_for(node), convergence_strategy_for(node))
       else
         ChefMetal::Machine::UnixMachine.new(node, transport_for(node), convergence_strategy_for(node))
@@ -229,9 +237,11 @@ module ChefMetalVsphere
       vm_folder = bootstrap_options['vm_folder']
       vm_name = node['normal']['provisioner_output']['vm_name']
       vm = find_vm(datacenter, vm_folder, vm_name)
+      vm
     end
 
     def is_windows?(vm)
+      return false if vm.nil?
       vm.guest.guestFamily == 'windowsGuest'
     end
 
@@ -267,8 +277,9 @@ module ChefMetalVsphere
 
     def create_ssh_transport(node)
       bootstrap_options = node['normal']['provisioner_output']['bootstrap_options']
+      vm = vm_for(node) or raise "VM for node #{node['name']} has not been created!"
 
-      hostname = vm_for(node).guest.ipAddress
+      hostname = vm.guest.ipAddress
       ssh_user = bootstrap_options['ssh']['user']
       ssh_options = symbolize_keys(bootstrap_options['ssh'])
       transport_options = {

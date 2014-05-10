@@ -24,6 +24,21 @@ module ChefMetalVsphere
       vm     = folder.find(vm_name, RbVmomi::VIM::VirtualMachine)
     end
 
+    def vm_started?(vm, wait_on_port = 22)
+      return false if vm.nil?
+      state = vm.runtime.powerState
+      return false unless state == 'poweredOn'
+      return false unless port_ready?(vm, wait_on_port)
+      return true
+    end
+
+    def vm_stopped?(vm)
+      return true if vm.nil?
+      state = vm.runtime.powerState
+      return false unless state == 'poweredOff'
+      return false
+    end
+
     def start_vm(vm, wait_on_port = 22)
       state = vm.runtime.powerState
       unless state == 'poweredOn'
