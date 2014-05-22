@@ -26,13 +26,14 @@ Create or obtain a unix/linux VM template.  The VM template must:
       vsphere_password: 'your_mothers_maiden_name'     # consider using a chef-vault
 
     with_provisioner_options('bootstrap_options' => {
-      datacenter:      'datacenter_name',
-      cluster:         'cluster_name',
-      resource_pool:   'resource_pool_name',            # often the same as the cluster_name
-      datastore:       'datastore_name',
-      template_name:   'name_of_template_vm',           # may be a VM or a VM Template
-      template_folder: 'folder_containing_template_vm',
-      vm_folder:       'folder_to_clone_vms_into',
+      datacenter:         'datacenter_name',
+      cluster:            'cluster_name',
+      resource_pool:      'resource_pool_name',            # often the same as the cluster_name
+      datastore:          'datastore_name',
+      template_name:      'name_of_template_vm',           # may be a VM or a VM Template
+      template_folder:    'folder_containing_template_vm',
+      vm_folder:          'folder_to_clone_vms_into',
+      customization_spec: 'standard-config',               # optional
 
       ssh: {                                             # net-ssh start() options
         user:                  'username_on_vm',         # must have nopasswd sudo
@@ -49,6 +50,13 @@ Create or obtain a unix/linux VM template.  The VM template must:
     1.upto 2 do |n|
       machine "metal_#{n}" do
         action [:create]
+
+        ## optionally add options per-machine customizations
+        add_provisioner_options('bootstrap_options' => {
+          num_cpus: n,
+          memory_mb: 1024 * n,
+          annotation: "metal_#{n} created by chef-metal-vsphere"
+        })
       end
 
       machine_file "/tmp/metal_#{n}.txt" do

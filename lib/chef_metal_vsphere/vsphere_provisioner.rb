@@ -215,6 +215,7 @@ module ChefMetalVsphere
       datacenter      = bootstrap_options['datacenter']
       template_folder = bootstrap_options['template_folder']
       template_name   = bootstrap_options['template_name']
+
       vm_template = find_vm(datacenter, template_folder, template_name) or raise("vSphere VM Template not found [#{template_folder}/#{template_name}]")
 
       vm = do_vm_clone(datacenter, vm_template, vm_name, bootstrap_options)
@@ -305,6 +306,5 @@ module ChefMetalVsphere
           end
         ] : h
     end
-
   end
 end

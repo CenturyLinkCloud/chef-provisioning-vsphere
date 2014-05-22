@@ -4,15 +4,15 @@ module ChefMetalVsphere
     def vim
       # reconnect on every call - connections may silently timeout during long operations (e.g. cloning)
       conn_opts = {
-          :host => connect_options['vsphere_host'],
-          :port => connect_options['vsphere_port'],
-          :path => connect_options['vshere_path'],
-          :use_ssl => connect_options['vsphere_ssl'],
-          :insecure => connect_options['vsphere_insecure'],
-          :proxyHost => connect_options['proxy_host'],
-          :proxyPort => connect_options['proxy_port'],
-          :user => connect_options['vsphere_user'],
-          :password => connect_options['vsphere_password']
+        :host => connect_options['vsphere_host'],
+        :port => connect_options['vsphere_port'],
+        :path => connect_options['vshere_path'],
+        :use_ssl => connect_options['vsphere_ssl'],
+        :insecure => connect_options['vsphere_insecure'],
+        :proxyHost => connect_options['proxy_host'],
+        :proxyPort => connect_options['proxy_port'],
+        :user => connect_options['vsphere_user'],
+        :password => connect_options['vsphere_password']
       }
 
       vim = RbVmomi::VIM.connect conn_opts
@@ -107,13 +107,31 @@ module ChefMetalVsphere
         location: RbVmomi::VIM.VirtualMachineRelocateSpec(pool: pool),
         powerOn: false,
         template: false
-        )
+      )
+
+      clone_spec.config = RbVmomi::VIM.VirtualMachineConfigSpec(:deviceChange => Array.new)
+
+      unless options['customization_spec'].to_s.empty?
+        clone_spec.customization = find_customization_spec(options['customization_spec'])
+      end
+
+      unless options['annotation'].to_s.nil?
+        clone_spec.config.annotation = options['annotation']
+      end
+
+      unless options['num_cpus'].to_s.nil?
+        clone_spec.config.numCPUs = options['num_cpus']
+      end
+
+      unless options['memory_mb'].to_s.nil?
+        clone_spec.config.memoryMB = options['memory_mb']
+      end
 
       vm_template.CloneVM_Task(
         name: vm_name,
         folder: find_folder(dc_name, options['vm_folder']),
         spec: clone_spec
-        ).wait_for_completion
+      ).wait_for_completion
     end
 
     def find_pool(dc, pool_name)
@@ -137,6 +155,14 @@ module ChefMetalVsphere
 
       baseEntity = baseEntity.resourcePool if not baseEntity.is_a?(RbVmomi::VIM::ResourcePool) and baseEntity.respond_to?(:resourcePool)
       baseEntity
+    end
+
+    def find_customization_spec(customization_spec)
+      csm = vim.serviceContent.customizationSpecManager
+      csi = csm.GetCustomizationSpec(:name => customization_spec)
+      spec = csi.spec
+      raise "Customization Spec not found [#{customization_spec}]" if spec.nil?
+      spec
     end
   end
 end
