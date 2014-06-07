@@ -21,6 +21,7 @@ Gem::Specification.new do |s|
 
   s.add_dependency 'chef'
   s.add_dependency 'rbvmomi'  # may need to lock nokogiri to 1.5.5
+  s.add_dependency 'chef-metal', '0.11.2'
 
   s.add_development_dependency 'rspec'
   s.add_development_dependency 'rake'
