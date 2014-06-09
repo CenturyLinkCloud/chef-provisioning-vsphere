@@ -3,25 +3,17 @@ module ChefMetalVsphere
 
     def vim
       # reconnect on every call - connections may silently timeout during long operations (e.g. cloning)
-      conn_opts = {
-        :host => connect_options['vsphere_host'],
-        :port => connect_options['vsphere_port'],
-        :path => connect_options['vshere_path'],
-        :use_ssl => connect_options['vsphere_ssl'],
-        :insecure => connect_options['vsphere_insecure'],
-        :proxyHost => connect_options['proxy_host'],
-        :proxyPort => connect_options['proxy_port'],
-        :user => connect_options['vsphere_user'],
-        :password => connect_options['vsphere_password']
-      }
-
-      vim = RbVmomi::VIM.connect conn_opts
+      vim = RbVmomi::VIM.connect connect_options
       return vim
     end
 
     def find_vm(dc_name, vm_folder, vm_name)
       folder = find_folder(dc_name, vm_folder) or raise("vSphere Folder not found [#{vm_folder}] for vm #{vm_name}")
       vm     = folder.find(vm_name, RbVmomi::VIM::VirtualMachine)
+    end
+
+    def find_vm_by_id(uuid)
+      vm = vim.searchIndex.FindByUuid({:uuid => uuid, :vmSearch => true, :instanceUuid => true})
     end
 
     def vm_started?(vm, wait_on_port = 22)
@@ -44,8 +36,6 @@ module ChefMetalVsphere
       unless state == 'poweredOn'
         vm.PowerOnVM_Task.wait_for_completion
       end
-
-      sleep 1 until port_ready?(vm, wait_on_port)
     end
 
     def stop_vm(vm)
@@ -100,7 +90,7 @@ module ChefMetalVsphere
     end
 
     def do_vm_clone(dc_name, vm_template, vm_name, options)
-      pool = options['resource_pool'] ? find_pool(dc(dc_name), options['resource_pool']) : vm_template.resourcePool
+      pool = options['resource_pool'] ? find_pool(dc(dc_name), options[:resource_pool]) : vm_template.resourcePool
       raise ':resource_pool must be specified when cloning from a VM Template' if pool.nil?
 
       clone_spec = RbVmomi::VIM.VirtualMachineCloneSpec(
@@ -111,25 +101,25 @@ module ChefMetalVsphere
 
       clone_spec.config = RbVmomi::VIM.VirtualMachineConfigSpec(:deviceChange => Array.new)
 
-      unless options['customization_spec'].to_s.empty?
-        clone_spec.customization = find_customization_spec(options['customization_spec'])
+      unless options[:customization_spec].to_s.empty?
+        clone_spec.customization = find_customization_spec(options[:customization_spec])
       end
 
-      unless options['annotation'].to_s.nil?
-        clone_spec.config.annotation = options['annotation']
+      unless options[:annotation].to_s.nil?
+        clone_spec.config.annotation = options[:annotation]
       end
 
-      unless options['num_cpus'].to_s.nil?
-        clone_spec.config.numCPUs = options['num_cpus']
+      unless options[:num_cpus].to_s.nil?
+        clone_spec.config.numCPUs = options[:num_cpus]
       end
 
-      unless options['memory_mb'].to_s.nil?
-        clone_spec.config.memoryMB = options['memory_mb']
+      unless options[:memory_mb].to_s.nil?
+        clone_spec.config.memoryMB = options[:memory_mb]
       end
 
       vm_template.CloneVM_Task(
         name: vm_name,
-        folder: find_folder(dc_name, options['vm_folder']),
+        folder: find_folder(dc_name, options[:vm_folder]),
         spec: clone_spec
       ).wait_for_completion
     end

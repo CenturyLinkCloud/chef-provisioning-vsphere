@@ -4,8 +4,9 @@ require 'chef_metal_vsphere/vsphere_provisioner'
 class Chef
   module DSL
     module Recipe
-      def with_vsphere_provisioner(options = {}, &block)
-        run_context.chef_metal.with_provisioner(ChefMetalVsphere::VsphereProvisioner.new(options), &block)
+      def with_vsphere_driver(driver_options = nil, &block)
+      	url = VsphereDriver.canonicalize_url({:driver_options => driver_options})
+  		with_driver url, driver_options, &block
       end
     end
   end
