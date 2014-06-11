@@ -6,13 +6,13 @@ module URI
 		DEFAULT_PATH = '/sdk'
 
 		def self.from_config(options)
-			URI("vsphere://#{options[:host]}:#{options[:port]}#{options[:path]}?ssl=#{options[:ssl]}&insecure=#{options[:insecure]}")
+			URI("vsphere://#{options[:host]}:#{options[:port]}#{options[:path]}?use_ssl=#{options[:use_ssl]}&insecure=#{options[:insecure]}")
 		end
 
-		def ssl
+		def use_ssl
 			if query
-				ssl_query = query.split('&').each.first{|q| q.starts_wirh?('ssl=')}
-				ssl_query == 'ssl=true'
+				ssl_query = query.split('&').each.select{|q| q.start_with?('use_ssl=')}.first
+				ssl_query == 'use_ssl=true'
 			else
 				true
 			end
@@ -20,7 +20,7 @@ module URI
 
 		def insecure
 			if query
-				insecure_query = query.split('&').each.first{|q| q.starts_wirh?('insecure=')}
+				insecure_query = query.split('&').each.select{|q| q.start_with?('insecure=')}.first
 				insecure_query == 'insecure=true'
 			else
 				false

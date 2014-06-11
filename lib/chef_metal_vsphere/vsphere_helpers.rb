@@ -1,10 +1,9 @@
 module ChefMetalVsphere
   module Helpers
 
-    def vim
+    def vim(options = connect_options)
       # reconnect on every call - connections may silently timeout during long operations (e.g. cloning)
-      vim = RbVmomi::VIM.connect connect_options
-      return vim
+      RbVmomi::VIM.connect options
     end
 
     def find_vm(dc_name, vm_folder, vm_name)
@@ -12,8 +11,8 @@ module ChefMetalVsphere
       vm     = folder.find(vm_name, RbVmomi::VIM::VirtualMachine)
     end
 
-    def find_vm_by_id(uuid)
-      vm = vim.searchIndex.FindByUuid({:uuid => uuid, :vmSearch => true, :instanceUuid => true})
+    def find_vm_by_id(uuid, connection = vim)
+      vm = connection.searchIndex.FindByUuid({:uuid => uuid, :vmSearch => true, :instanceUuid => true})
     end
 
     def vm_started?(vm, wait_on_port = 22)
@@ -76,10 +75,12 @@ module ChefMetalVsphere
     def find_folder(dc_name, folder_name)
       #dc(dc_name).vmFolder.childEntity.grep(RbVmomi::VIM::Folder).find { |x| x.name == folder_name }
       baseEntity = dc(dc_name).vmFolder
-      entityArray = folder_name.split('/')
-      entityArray.each do |entityArrItem|
-        if entityArrItem != ''
-          baseEntity = baseEntity.childEntity.grep(RbVmomi::VIM::Folder).find { |f| f.name == entityArrItem }
+      if folder_name && folder_name.length > 0
+        entityArray = folder_name.split('/')
+        entityArray.each do |entityArrItem|
+          if entityArrItem != ''
+            baseEntity = baseEntity.childEntity.grep(RbVmomi::VIM::Folder).find { |f| f.name == entityArrItem }
+          end
         end
       end
       baseEntity
@@ -90,7 +91,8 @@ module ChefMetalVsphere
     end
 
     def do_vm_clone(dc_name, vm_template, vm_name, options)
-      pool = options['resource_pool'] ? find_pool(dc(dc_name), options[:resource_pool]) : vm_template.resourcePool
+      datacenter = dc(dc_name)
+      pool = options['resource_pool'] ? find_pool(datacenter, options[:resource_pool]) : vm_template.resourcePool
       raise ':resource_pool must be specified when cloning from a VM Template' if pool.nil?
 
       clone_spec = RbVmomi::VIM.VirtualMachineCloneSpec(
@@ -117,11 +119,30 @@ module ChefMetalVsphere
         clone_spec.config.memoryMB = options[:memory_mb]
       end
 
+      unless options[:network_name].to_s.nil?
+        network = find_network(datacenter, options[:network_name])
+        card = vm_template.config.hardware.device.grep(RbVmomi::VIM::VirtualEthernetCard).first
+        begin
+          switch_port = RbVmomi::VIM.DistributedVirtualSwitchPortConnection(:switchUuid => network.config.distributedVirtualSwitch.uuid, :portgroupKey => network.key)
+          card.backing.port = switch_port
+        rescue
+          # not connected to a distibuted switch?
+          card.backing.deviceName = options[:network_name]
+        end
+        dev_spec = RbVmomi::VIM.VirtualDeviceConfigSpec(:device => card, :operation => "edit")
+        clone_spec.config.deviceChange.push dev_spec
+      end
+
       vm_template.CloneVM_Task(
         name: vm_name,
         folder: find_folder(dc_name, options[:vm_folder]),
         spec: clone_spec
       ).wait_for_completion
+    end
+
+    def find_network(dc, network_name)
+      baseEntity = dc.network
+      baseEntity.find { |f| f.name == network_name } or raise "no such network #{network_name}"
     end
 
     def find_pool(dc, pool_name)

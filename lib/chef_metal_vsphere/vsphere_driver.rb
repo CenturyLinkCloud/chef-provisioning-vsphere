@@ -1,8 +1,8 @@
+require 'chef'
 require 'chef_metal/driver'
-require 'chef_metal/machine/windows_machine'
+require 'cheffish/merged_config'
+#require 'chef_metal/machine/windows_machine'
 require 'chef_metal/machine/unix_machine'
-require 'chef_metal/convergence_strategy/install_msi'
-require 'chef_metal/convergence_strategy/install_cached'
 require 'chef_metal/transport/ssh'
 require 'chef_metal_vsphere/version'
 require 'rbvmomi'
@@ -12,7 +12,6 @@ require 'chef_metal_vsphere/vsphere_url'
 module ChefMetalVsphere
   # Provisions machines in vSphere.
   class VsphereDriver < ChefMetal::Driver
-
     include Chef::Mixin::ShellOut
     include ChefMetalVsphere::Helpers
 
@@ -22,29 +21,45 @@ module ChefMetalVsphere
 
     def self.canonicalize_url(driver_url, config)
       config = symbolize_keys(config)
-      new_connect_options = {}
-      new_connect_options[:provider] = 'vsphere'
-      new_config = { :driver_options => { :connect_options => new_connect_options.merge(config[:driver_options]) }}
       new_defaults = {
        :driver_options => { :connect_options => { :port     => 443,
-                                                  :ssl      => true,
+                                                  :use_ssl      => true,
                                                   :insecure => false,
                                                   :path     => '/sdk'
         } },
-                       :machine_options => { :bootstrap_options => {} }
+                       :machine_options => { :start_timeout => 600, 
+                                             :create_timeout => 600, 
+                                             :bootstrap_options => { :ssh => { :port => 22,
+                                                                               :user => 'root' }} }
       }
+
+      new_connect_options = {}
+      new_connect_options[:provider] = 'vsphere'
       if driver_url
         uri = URI(driver_url)
         new_connect_options[:host] = uri.host
         new_connect_options[:port] = uri.port
-        new_connect_options[:path] = uri.path
-        new_connect_options[:ssl] = uri.ssl
+        if uri.path.length > 0
+          new_connect_options[:path] = uri.path
+        end
+        new_connect_options[:use_ssl] = uri.use_ssl
         new_connect_options[:insecure] = uri.insecure
       end
+      new_connect_options = new_connect_options.merge(config[:driver_options])
+
+      new_config = { :driver_options => { :connect_options => new_connect_options }}
       config = Cheffish::MergedConfig.new(new_config, config, new_defaults)
 
-      url = URI::VsphereUrl.from_config(new_connect_options).to_s
-      puts config.to_hash
+      required_options = [:host, :user, :password]
+      missing_options = []
+      required_options.each do |opt|
+        missing_options << opt unless config[:driver_options][:connect_options].has_key?(opt)
+      end
+      unless missing_options.empty?
+        raise "missing required options: #{missing_options.join(', ')}"
+      end
+
+      url = URI::VsphereUrl.from_config(config[:driver_options][:connect_options]).to_s
       [ url, config ]
     end
 
@@ -64,7 +79,7 @@ module ChefMetalVsphere
     #   :host       - required - hostname of the vSphere API server
     #   :port       - optional - port on the vSphere API server (default: 443)
     #   :path        - optional - path on the vSphere API server (default: /sdk)
-    #   :ssl        - optional - true to use ssl in connection to vSphere API server (default: true)
+    #   :use_ssl        - optional - true to use ssl in connection to vSphere API server (default: true)
     #   :insecure   - optional - true to ignore ssl certificate validation errors in connection to vSphere API server (default: false)
     #   :user       - required - user name to use in connection to vSphere API server
     #   :password   - required - password to use in connection to vSphere API server
@@ -74,19 +89,8 @@ module ChefMetalVsphere
       super(driver_url, config)
       @connect_options = config[:driver_options][:connect_options].to_hash
 
-      required_options = [:host, :user, :password]
-      missing_options = []
-      required_options.each do |opt|
-        missing_options << opt unless @connect_options.has_key?(opt)
-      end
-      unless missing_options.empty?
-        raise "missing required options: #{missing_options.join(', ')}"
-      end
-
       # test vim connection
       vim || raise("cannot connect to [#{provisioner_url}]")
-
-      @connect_options
     end
 
     attr_reader :connect_options
@@ -146,11 +150,8 @@ module ChefMetalVsphere
           Chef::Log.warn "Machine #{machine_spec.name} (#{machine_spec.location['server_id']} on #{driver_url}) no longer exists.  Recreating ..."
         end
       end
-
       bootstrap_options = bootstrap_options_for(machine_spec, machine_options)
       vm = nil
-
-      vm_folder = bootstrap_options[:vm_folder]
 
       if bootstrap_options[:ssh]
         wait_on_port = bootstrap_options[:ssh][:port]
@@ -167,7 +168,7 @@ module ChefMetalVsphere
       # TODO compare new options to existing and fail if we cannot change it
       # over (perhaps introduce a boolean that will force a delete and recreate
       # in such a case)
-
+      
       vm = clone_vm(bootstrap_options)
 
       machine_spec.location = {
@@ -182,11 +183,12 @@ module ChefMetalVsphere
         machine_spec.location[key] = machine_options[key.to_sym] if machine_options[key.to_sym]
       end
 
-      action_handler.performed_action "machine #{machine_spec.name} created as #{machine_spec.server_id} on #{driver_url}"
+      action_handler.performed_action "machine #{machine_spec.name} created as #{machine_spec.location['server_id']} on #{driver_url}"
       vm
     end
 
     def ready_machine(action_handler, machine_spec, machine_options)
+      start_machine(action_handler, machine_spec, machine_options)
       vm = vm_for(machine_spec)
       if vm.nil?
         raise "Machine #{machine_spec.name} does not have a server associated with it, or server does not exist."
@@ -194,11 +196,9 @@ module ChefMetalVsphere
 
       wait_until_ready(action_handler, machine_spec, machine_options, vm)
 
-      bootstrap_options = bootstrap_options_for(machine_spec, machine_options)
-
       begin
         wait_for_transport(action_handler, machine_spec, machine_options, vm)
-      rescue Fog::Errors::TimeoutError
+      rescue Timeout::Error
         # Only ever reboot once, and only if it's been less than 10 minutes since we stopped waiting
         if machine_spec.location['started_at'] || remaining_wait_time(machine_spec, machine_options) < -(10*60)
           raise
@@ -242,6 +242,16 @@ module ChefMetalVsphere
       end
     end
 
+    def start_machine(action_handler, machine_spec, machine_options)
+      vm = vm_for(machine_spec)
+      if vm
+        action_handler.perform_action "Power on VM [#{vm.parent.name}/#{vm.name}]" do
+          bootstrap_options = bootstrap_options_for(machine_spec, machine_options)
+          start_vm(vm, bootstrap_options[:ssh][:port])
+        end
+      end
+    end
+
     def restart_server(action_handler, machine_spec, vm)
       action_handler.perform_action "restart machine #{machine_spec.name} (#{vm.config.instanceUuid} on #{driver_url})" do
         stop_machine(action_handler, machine_spec, vm)
@@ -254,17 +264,18 @@ module ChefMetalVsphere
 
     def remaining_wait_time(machine_spec, machine_options)
       if machine_spec.location['started_at']
-        timeout = option_for(machine_options, :start_timeout) - (Time.now.utc - Time.parse(machine_spec.location['started_at']))
+        machine_options[:start_timeout] - (Time.now.utc - Time.parse(machine_spec.location['started_at']))
       else
-        timeout = option_for(machine_options, :create_timeout) - (Time.now.utc - Time.parse(machine_spec.location['allocated_at']))
+        machine_options[:create_timeout] - (Time.now.utc - Time.parse(machine_spec.location['allocated_at']))
       end
     end
 
     def wait_until_ready(action_handler, machine_spec, machine_options, vm)
-      if vm.tools_state == 'toolsNotRunning'
+      if vm.guest.toolsRunningStatus != "guestToolsRunning"
+        perform_action = true
         if action_handler.should_perform_actions
           action_handler.report_progress "waiting for #{machine_spec.name} (#{vm.config.instanceUuid} on #{driver_url}) to be ready ..."
-          until remaining_wait_time(machine_spec, machine_options) || vm.guest.toolsRunningStatus == "guestToolsRunning" do
+          until remaining_wait_time(machine_spec, machine_options) < 0 || (vm.guest.toolsRunningStatus == "guestToolsRunning" && vm.guest.ipAddress.length > 0) do
             print "."
             sleep 5
           end
@@ -282,7 +293,7 @@ module ChefMetalVsphere
     end
 
     def bootstrap_options_for(machine_spec, machine_options)
-      bootstrap_options = symbolize_keys(machine_options[:bootstrap_options] || {})
+      bootstrap_options = machine_options[:bootstrap_options] || {}
       if !bootstrap_options[:key_name]
         bootstrap_options[:key_name] = 'metal_default'
       end
@@ -296,7 +307,6 @@ module ChefMetalVsphere
       tags.merge!(bootstrap_options[:tags]) if bootstrap_options[:tags]
       bootstrap_options.merge!({ :tags => tags })
       bootstrap_options[:name] ||= machine_spec.name
-
       bootstrap_options
     end
 
@@ -305,6 +315,9 @@ module ChefMetalVsphere
       datacenter      = bootstrap_options[:datacenter]
       template_folder = bootstrap_options[:template_folder]
       template_name   = bootstrap_options[:template_name]
+
+      vm = find_vm(datacenter, bootstrap_options[:vm_folder], vm_name)
+      return vm if vm
 
       vm_template = find_vm(datacenter, template_folder, template_name) or raise("vSphere VM Template not found [#{template_folder}/#{template_name}]")
 
@@ -331,6 +344,8 @@ module ChefMetalVsphere
     end
 
     def convergence_strategy_for(machine_spec, machine_options)
+      require 'chef_metal/convergence_strategy/install_msi'
+      require 'chef_metal/convergence_strategy/install_cached'      
       # Defaults
       if !machine_spec.location
         return ChefMetal::ConvergenceStrategy::NoConverge.new(machine_options[:convergence_options], config)
@@ -363,13 +378,13 @@ module ChefMetalVsphere
 
     def transport_for(machine_spec, machine_options, vm)
       if is_windows?(vm)
-        create_winrm_transport(vm)
+        create_winrm_transport(machine_spec, machine_options, vm)
       else
-        create_ssh_transport(vm)
+        create_ssh_transport(machine_spec, machine_options, vm)
       end
     end
 
-    def create_winrm_transport(node)
+    def create_winrm_transport(machine_spec, machine_options, vm)
       raise 'Windows guest VMs are not yet supported'
     end
 
@@ -378,6 +393,7 @@ module ChefMetalVsphere
       ssh_options = bootstrap_options[:ssh]
       ssh_user = ssh_options[:user]
       remote_host = vm.guest.ipAddress
+
       ChefMetal::Transport::SSH.new(remote_host, ssh_user, ssh_options, {}, config)
     end
   end

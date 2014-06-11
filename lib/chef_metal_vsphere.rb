@@ -1,5 +1,5 @@
 require 'chef_metal'
-require 'chef_metal_vsphere/vsphere_provisioner'
+require 'chef_metal_vsphere/vsphere_driver'
 
 class Chef
   module DSL
