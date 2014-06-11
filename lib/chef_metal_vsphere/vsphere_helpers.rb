@@ -94,11 +94,16 @@ module ChefMetalVsphere
 
     def do_vm_clone(dc_name, vm_template, vm_name, options)
       datacenter = dc(dc_name)
-      pool = options['resource_pool'] ? find_pool(datacenter, options[:resource_pool]) : vm_template.resourcePool
+      pool = options[:resource_pool] ? find_pool(datacenter, options[:resource_pool]) : vm_template.resourcePool
+      rspec = RbVmomi::VIM.VirtualMachineRelocateSpec(pool: pool)
       raise ':resource_pool must be specified when cloning from a VM Template' if pool.nil?
 
+      unless options[:datastore].to_s.empty?
+        rspec.datastore = find_datastore(datacenter, options[:datastore])
+      end
+
       clone_spec = RbVmomi::VIM.VirtualMachineCloneSpec(
-        location: RbVmomi::VIM.VirtualMachineRelocateSpec(pool: pool),
+        location: rspec,
         powerOn: false,
         template: false
       )
@@ -145,6 +150,11 @@ module ChefMetalVsphere
     def find_network(dc, network_name)
       baseEntity = dc.network
       baseEntity.find { |f| f.name == network_name } or raise "no such network #{network_name}"
+    end
+
+    def find_datastore(dc, datastore_name)
+        baseEntity = dc.datastore
+        baseEntity.find { |f| f.info.name == datastore_name } or raise "no such datastore #{datastore_name}"    
     end
 
     def find_pool(dc, pool_name)
