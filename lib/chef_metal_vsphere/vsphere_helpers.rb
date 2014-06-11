@@ -1,3 +1,5 @@
+require 'rbvmomi'
+
 module ChefMetalVsphere
   module Helpers
 
