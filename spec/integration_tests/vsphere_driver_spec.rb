@@ -86,6 +86,10 @@ describe "vsphere_driver" do
 		it "is in the correct datacenter" do
 			expect(@connection.serviceInstance.find_datacenter(@metal_config[:machine_options][:bootstrap_options][:datacenter]).find_vm("#{@vm.parent.name}/#{@vm_name}")).not_to eq(nil)
 		end
+		it "has an added disk of the correct size" do
+			disk_count = @vm.disks.count
+			expect(@vm.disks[disk_count-1].capacityInKB).to eq(@metal_config[:machine_options][:bootstrap_options][:additional_disk_size_gb] * 1024 * 1024)
+		end
     end
 
 	context "destroy_machine" do
