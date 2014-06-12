@@ -228,7 +228,11 @@ module ChefMetalVsphere
         end
       end
       strategy = convergence_strategy_for(machine_spec, machine_options)
-      strategy.cleanup_convergence(action_handler, machine_spec)
+      begin
+        strategy.cleanup_convergence(action_handler, machine_spec)
+      rescue URI::InvalidURIError
+        raise unless Chef::Config.local_mode
+      end
     end
 
     def stop_machine(action_handler, machine_spec, machine_options)
@@ -343,7 +347,8 @@ module ChefMetalVsphere
 
     def convergence_strategy_for(machine_spec, machine_options)
       require 'chef_metal/convergence_strategy/install_msi'
-      require 'chef_metal/convergence_strategy/install_cached'      
+      require 'chef_metal/convergence_strategy/install_cached'
+      require 'chef_metal/convergence_strategy/no_converge'
       # Defaults
       if !machine_spec.location
         return ChefMetal::ConvergenceStrategy::NoConverge.new(machine_options[:convergence_options], config)
