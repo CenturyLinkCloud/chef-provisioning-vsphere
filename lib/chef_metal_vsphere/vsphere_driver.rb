@@ -324,7 +324,6 @@ module ChefMetalVsphere
       vm_template = find_vm(datacenter, template_folder, template_name) or raise("vSphere VM Template not found [#{template_folder}/#{template_name}]")
 
       do_vm_clone(datacenter, vm_template, vm_name, bootstrap_options)
-      find_vm(datacenter, bootstrap_options[:vm_folder], vm_name)
     end
 
     def machine_for(machine_spec, machine_options, vm = nil)

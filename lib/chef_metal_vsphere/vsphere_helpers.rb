@@ -145,6 +145,34 @@ module ChefMetalVsphere
         folder: find_folder(dc_name, options[:vm_folder]),
         spec: clone_spec
       ).wait_for_completion
+
+    vm = find_vm(dc_name, options[:vm_folder], vm_name)
+
+    unless options[:additional_disk_size_gb].to_s.nil?
+      if options[:datastore].to_s.empty? 
+        raise ":datastore must be specified when adding a disk to a cloned vm"
+      end
+      idx = vm.disks.count
+      puts "creating [#{options[:datastore]}] #{vm_name}/#{vm_name}_#{idx}.vmdk"
+      task = vm.ReconfigVM_Task(:spec => RbVmomi::VIM.VirtualMachineConfigSpec(:deviceChange =>[RbVmomi::VIM::VirtualDeviceConfigSpec(
+            :operation     => :add,
+            :fileOperation => :create,
+            :device        => RbVmomi::VIM.VirtualDisk(
+              :key           => idx,
+              :backing       => RbVmomi::VIM.VirtualDiskFlatVer2BackingInfo(
+                :fileName        => "[#{options[:datastore]}]",
+                :diskMode        => 'persistent',
+                :thinProvisioned => true
+              ),
+              :capacityInKB  => options[:additional_disk_size_gb] * 1024 * 1024,
+              :controllerKey => 1000,
+              :unitNumber    => idx
+            )
+      )]))
+      task.wait_for_completion
+    end
+
+    vm
     end
 
     def find_network(dc, network_name)
