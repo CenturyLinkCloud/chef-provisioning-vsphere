@@ -193,6 +193,40 @@ module ChefMetalVsphere
 
       wait_until_ready(action_handler, machine_spec, machine_options, vm)
 
+      bootstrap_options = bootstrap_options_for(machine_spec, machine_options)
+      if has_static_ip(bootstrap_options)
+        transport = transport_for(machine_spec, machine_options, vm)
+        if !transport.available?
+          puts "waiting for ip"
+          Chef::Log.info "waiting for customizations to complete"
+          now = Time.now.utc
+          until (Time.now.utc - now) > 45 || (!vm.guest.ipAddress.nil? && vm.guest.ipAddress.length > 0) do
+            print "-"
+            sleep 5
+          end
+          if vm.guest.ipAddress.nil? || vm.guest.ipAddress.length == 0
+            puts "no ip"
+            Chef::Log.info "rebooting..."
+            if vm.guest.toolsRunningStatus != "guestToolsRunning"
+              puts "stating vm"
+              Chef::Log.info "tools have stopped. current power state is #{vm.runtime.powerState} and tools state is #{vm.toolsRunningStatus}. powering up server..."
+              start_vm(vm)
+            else
+              puts "rebooting vm"
+              restart_server(action_handler, machine_spec, vm)
+            end
+            puts "trying again for ip"
+            now = Time.now.utc
+            until (Time.now.utc - now) > 60 || (!vm.guest.ipAddress.nil? && vm.guest.ipAddress.length > 0) do
+              print "-"
+              sleep 5
+            end
+          end
+        end
+      end
+
+      puts "my ip is #{vm.guest.ipAddress}"
+
       begin
         wait_for_transport(action_handler, machine_spec, machine_options, vm)
       rescue Timeout::Error
