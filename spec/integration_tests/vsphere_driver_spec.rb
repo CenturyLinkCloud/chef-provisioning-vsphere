@@ -90,22 +90,32 @@ describe "vsphere_driver" do
 			disk_count = @vm.disks.count
 			expect(@vm.disks[disk_count-1].capacityInKB).to eq(@metal_config[:machine_options][:bootstrap_options][:additional_disk_size_gb] * 1024 * 1024)
 		end
+		it "has the correct IP address" do
+	      if @vm.guest.toolsRunningStatus != "guestToolsRunning"
+	      	now = Time.now.utc
+	        until (Time.now.utc - now) > 30 || (@vm.guest.toolsRunningStatus == "guestToolsRunning" && !@vm.guest.ipAddress.nil? && @vm.guest.ipAddress.length > 0) do
+	          print "."
+	          sleep 5
+	        end
+	      end
+			expect(@vm.guest.ipAddress).to eq(@metal_config[:machine_options][:bootstrap_options][:customization_spec][:ipsettings][:ip])
+		end
     end
 
-	context "destroy_machine" do
+	# context "destroy_machine" do
 
-		it "removes the machine" do
-			Cheffish.honor_local_mode do
-				chef_server = Cheffish.default_chef_server(@metal_config)
-				driver = ChefMetal.driver_for_url("vsphere://#{@metal_config[:driver_options][:host]}", @metal_config)
-				action_handler = ChefMetal::ActionHandler.new
-				machine_spec = ChefMetal::ChefMachineSpec.new({'name' => @vm_name}, chef_server)
-				machine_spec.location = { 'driver_url' => driver.driver_url,
-										  'server_id' => @server_id}
-				driver.destroy_machine(action_handler, machine_spec, @metal_config[:machine_options])
-			end
-			vm = find_vm_by_id(@server_id, @connection)
-			expect(vm).to eq(nil)
-		end
-	end
+	# 	it "removes the machine" do
+	# 		Cheffish.honor_local_mode do
+	# 			chef_server = Cheffish.default_chef_server(@metal_config)
+	# 			driver = ChefMetal.driver_for_url("vsphere://#{@metal_config[:driver_options][:host]}", @metal_config)
+	# 			action_handler = ChefMetal::ActionHandler.new
+	# 			machine_spec = ChefMetal::ChefMachineSpec.new({'name' => @vm_name}, chef_server)
+	# 			machine_spec.location = { 'driver_url' => driver.driver_url,
+	# 									  'server_id' => @server_id}
+	# 			driver.destroy_machine(action_handler, machine_spec, @metal_config[:machine_options])
+	# 		end
+	# 		vm = find_vm_by_id(@server_id, @connection)
+	# 		expect(vm).to eq(nil)
+	# 	end
+	# end
 end

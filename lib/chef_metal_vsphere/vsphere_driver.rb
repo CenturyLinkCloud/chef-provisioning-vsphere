@@ -86,9 +86,6 @@ module ChefMetalVsphere
     def initialize(driver_url, config)
       super(driver_url, config)
       @connect_options = config[:driver_options][:connect_options].to_hash
-
-      # test vim connection
-      vim || raise("cannot connect to [#{provisioner_url}]")
     end
 
     attr_reader :connect_options
@@ -141,8 +138,10 @@ module ChefMetalVsphere
     #
     def allocate_machine(action_handler, machine_spec, machine_options)
       if machine_spec.location
+        Chef::Log.warn "Checking to see if #{machine_spec.location} has been created..."
         vm = vm_for(machine_spec)
         if vm
+          Chef::Log.warn "returning existing machine"
           return vm
         else
           Chef::Log.warn "Machine #{machine_spec.name} (#{machine_spec.location['server_id']} on #{driver_url}) no longer exists.  Recreating ..."
@@ -193,6 +192,24 @@ module ChefMetalVsphere
       end
 
       wait_until_ready(action_handler, machine_spec, machine_options, vm)
+
+      is_static = false
+      bootstrap_options = bootstrap_options_for(machine_spec, machine_options)
+      if has_static_ip(bootstrap_options)
+        is_static = true
+        transport = transport_for(machine_spec, machine_options, vm)
+        if !transport.available?
+          Chef::Log.info "waiting for customizations to complete"
+          sleep(30)
+          Chef::Log.info "rebooting..."
+          if vm.guest.toolsRunningStatus != "guestToolsRunning"
+            Chef::Log.info "tools have stopped. current power state is #{vm.runtime.powerState} and tools state is #{vm.toolsRunningStatus}. powering up server..."
+            start_vm(vm)
+          else
+            restart_server(action_handler, machine_spec, vm)
+          end
+        end
+      end
 
       begin
         wait_for_transport(action_handler, machine_spec, machine_options, vm)
@@ -264,6 +281,19 @@ module ChefMetalVsphere
 
     protected
 
+    def has_static_ip(bootstrap_options)
+      if bootstrap_options.has_key?(:customization_spec)
+        bootstrap_options = bootstrap_options[:customization_spec]
+        if bootstrap_options.has_key?(:ipsettings)
+          bootstrap_options = bootstrap_options[:ipsettings]
+          if bootstrap_options.has_key?(:ip)
+            return true
+          end
+        end
+      end
+      false
+    end
+
     def remaining_wait_time(machine_spec, machine_options)
       if machine_spec.location['started_at']
         machine_options[:start_timeout] - (Time.now.utc - Time.parse(machine_spec.location['started_at']))
@@ -277,7 +307,7 @@ module ChefMetalVsphere
         perform_action = true
         if action_handler.should_perform_actions
           action_handler.report_progress "waiting for #{machine_spec.name} (#{vm.config.instanceUuid} on #{driver_url}) to be ready ..."
-          until remaining_wait_time(machine_spec, machine_options) < 0 || (vm.guest.toolsRunningStatus == "guestToolsRunning" && vm.guest.ipAddress.length > 0) do
+          until remaining_wait_time(machine_spec, machine_options) < 0 || (vm.guest.toolsRunningStatus == "guestToolsRunning" && (vm.guest.ipAddress.nil? || vm.guest.ipAddress.length > 0)) do
             print "."
             sleep 5
           end
@@ -364,7 +394,7 @@ module ChefMetalVsphere
       transport = transport_for(machine_spec, machine_options, vm)
       if !transport.available?
         if action_handler.should_perform_actions
-          action_handler.report_progress "waiting for #{machine_spec.name} (#{vm.instance.Uuid} on #{driver_url}) to be connectable (transport up and running) ..."
+          action_handler.report_progress "waiting for #{machine_spec.name} (#{vm.config.instanceUuid} on #{driver_url}) to be connectable (transport up and running) ..."
 
           _self = self
 
@@ -395,7 +425,7 @@ module ChefMetalVsphere
       bootstrap_options = bootstrap_options_for(machine_spec, machine_options)
       ssh_options = bootstrap_options[:ssh]
       ssh_user = ssh_options[:user]
-      remote_host = vm.guest.ipAddress
+      remote_host = has_static_ip(bootstrap_options) ? bootstrap_options[:customization_spec][:ipsettings][:ip] : vm.guest.ipaddress
 
       ChefMetal::Transport::SSH.new(remote_host, ssh_user, ssh_options, {}, config)
     end

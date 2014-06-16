@@ -110,8 +110,40 @@ module ChefMetalVsphere
 
       clone_spec.config = RbVmomi::VIM.VirtualMachineConfigSpec(:deviceChange => Array.new)
 
-      unless options[:customization_spec].to_s.empty?
-        clone_spec.customization = find_customization_spec(options[:customization_spec])
+      if options.has_key?(:customization_spec)
+        if(options[:customization_spec].is_a?(Hash))
+            cust_options = options[:customization_spec]
+            raise ArgumentError, "domain is required" unless cust_options.key?(:domain)
+            if cust_options.key?(:ipsettings)
+              raise ArgumentError, "ip and subnetMask is required for static ip" unless cust_options[:ipsettings].key?(:ip) and
+                                                                                        cust_options[:ipsettings].key?(:subnetMask)
+              cust_ip_settings = RbVmomi::VIM::CustomizationIPSettings.new(cust_options[:ipsettings])
+              cust_ip_settings.ip = RbVmomi::VIM::CustomizationFixedIp(:ipAddress => cust_options[:ipsettings][:ip])
+            end
+            cust_domain = cust_options[:domain]
+            cust_ip_settings ||= RbVmomi::VIM::CustomizationIPSettings.new(:ip => RbVmomi::VIM::CustomizationDhcpIpGenerator.new())
+            cust_ip_settings.dnsDomain = cust_domain
+            cust_global_ip_settings = RbVmomi::VIM::CustomizationGlobalIPSettings.new
+            cust_global_ip_settings.dnsServerList = cust_ip_settings.dnsServerList
+            cust_global_ip_settings.dnsSuffixList = [cust_domain]
+            cust_hostname = RbVmomi::VIM::CustomizationFixedName.new(:name => cust_options[:hostname]) if cust_options.key?(:hostname)
+            cust_hostname ||= RbVmomi::VIM::CustomizationFixedName.new(:name => vm_name)
+            cust_hwclockutc = cust_options[:hw_clock_utc]
+            cust_timezone = cust_options[:time_zone]
+            cust_prep = RbVmomi::VIM::CustomizationLinuxPrep.new(
+              :domain => cust_domain,
+              :hostName => cust_hostname,
+              :hwClockUTC => cust_hwclockutc,
+              :timeZone => cust_timezone)
+            cust_adapter_mapping = [RbVmomi::VIM::CustomizationAdapterMapping.new(:adapter => cust_ip_settings)]
+            cust_spec = RbVmomi::VIM::CustomizationSpec.new(
+              :identity => cust_prep,
+              :globalIPSettings => cust_global_ip_settings,
+              :nicSettingMap => cust_adapter_mapping)
+        else
+          cust_spec = find_customization_spec(options[:customization_spec])
+        end
+        clone_spec.customization = cust_spec
       end
 
       unless options[:annotation].to_s.nil?
@@ -153,7 +185,6 @@ module ChefMetalVsphere
         raise ":datastore must be specified when adding a disk to a cloned vm"
       end
       idx = vm.disks.count
-      puts "creating [#{options[:datastore]}] #{vm_name}/#{vm_name}_#{idx}.vmdk"
       task = vm.ReconfigVM_Task(:spec => RbVmomi::VIM.VirtualMachineConfigSpec(:deviceChange =>[RbVmomi::VIM::VirtualDeviceConfigSpec(
             :operation     => :add,
             :fileOperation => :create,
