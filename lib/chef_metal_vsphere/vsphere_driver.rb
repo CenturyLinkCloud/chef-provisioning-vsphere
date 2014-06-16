@@ -193,24 +193,6 @@ module ChefMetalVsphere
 
       wait_until_ready(action_handler, machine_spec, machine_options, vm)
 
-      is_static = false
-      bootstrap_options = bootstrap_options_for(machine_spec, machine_options)
-      if has_static_ip(bootstrap_options)
-        is_static = true
-        transport = transport_for(machine_spec, machine_options, vm)
-        if !transport.available?
-          Chef::Log.info "waiting for customizations to complete"
-          sleep(30)
-          Chef::Log.info "rebooting..."
-          if vm.guest.toolsRunningStatus != "guestToolsRunning"
-            Chef::Log.info "tools have stopped. current power state is #{vm.runtime.powerState} and tools state is #{vm.toolsRunningStatus}. powering up server..."
-            start_vm(vm)
-          else
-            restart_server(action_handler, machine_spec, vm)
-          end
-        end
-      end
-
       begin
         wait_for_transport(action_handler, machine_spec, machine_options, vm)
       rescue Timeout::Error
