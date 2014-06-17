@@ -28,16 +28,18 @@ module ChefMetalVsphere
                        :machine_options => { :start_timeout => 600, 
                                              :create_timeout => 600, 
                                              :bootstrap_options => { :ssh => { :port => 22,
-                                                                               :user => 'root' }} }
+                                                                               :user => 'root' },
+                                                                     :key_name => 'metal_default',
+                                                                     :tags => {} } }
       }
 
       new_connect_options = {}
       new_connect_options[:provider] = 'vsphere'
-      if driver_url
+      if !driver_url.nil?
         uri = URI(driver_url)
         new_connect_options[:host] = uri.host
         new_connect_options[:port] = uri.port
-        if uri.path.length > 0
+        if uri.path && uri.path.length > 0
           new_connect_options[:path] = uri.path
         end
         new_connect_options[:use_ssl] = uri.use_ssl
@@ -357,9 +359,7 @@ module ChefMetalVsphere
 
     def bootstrap_options_for(machine_spec, machine_options)
       bootstrap_options = machine_options[:bootstrap_options] || {}
-      if !bootstrap_options[:key_name]
-        bootstrap_options[:key_name] = 'metal_default'
-      end
+      bootstrap_options = bootstrap_options.to_hash
       tags = {
           'Name' => machine_spec.name,
           'BootstrapId' => machine_spec.id,

@@ -5,11 +5,11 @@ Gem::Specification.new do |s|
   s.name = 'clc-chef-metal-vsphere'
   s.version = ChefMetalVsphere::VERSION
   s.platform = Gem::Platform::RUBY
-  s.extra_rdoc_files = ['README.md', 'LICENSE' ]
+  s.extra_rdoc_files = ['README.md']
   s.summary = 'Provisioner for creating vSphere VM instances in Chef Metal.'
   s.description = s.summary
-  s.author = 'Rally Software Development Corp'
-  s.email = 'rallysoftware-cookbooks@rallydev.com'
+  s.authors = ['CenturyLink Cloud']
+  s.email = 'matt.wrock@CenturyLinkCloud.com'
   s.homepage = 'https://github.com/RallySoftware-cookbooks/chef-metal-vsphere'
   s.license = 'MIT'
 
@@ -17,11 +17,11 @@ Gem::Specification.new do |s|
   s.executables  = %w( )
 
   s.require_path = 'lib'
-  s.files = %w(Rakefile LICENSE README.md) + Dir.glob("{distro,lib,tasks,spec}/**/*", File::FNM_DOTMATCH).reject {|f| File.directory?(f) }
+  s.files = %w(Rakefile README.md) + Dir.glob("{distro,lib,tasks,spec}/**/*", File::FNM_DOTMATCH).reject {|f| File.directory?(f) }
 
   s.add_dependency 'chef'
   s.add_dependency 'rbvmomi'  # may need to lock nokogiri to 1.5.5
-  s.add_dependency 'clc-fork-chef-metal', '0.11.2.alpha.1'
+  s.add_dependency 'clc-fork-chef-metal', '0.11.2.alpha.3'
 
   s.add_development_dependency 'rspec'
   s.add_development_dependency 'rake'
