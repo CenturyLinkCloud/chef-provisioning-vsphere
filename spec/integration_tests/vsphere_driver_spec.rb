@@ -80,10 +80,19 @@ describe "vsphere_driver" do
 			expect(@vm.datastore[0].name).to eq(@metal_config[:machine_options][:bootstrap_options][:datastore])
 		end
 		it "is in the correct resource pool" do
-			expect(@vm.resourcePool.name).to eq(@metal_config[:machine_options][:bootstrap_options][:resource_pool].split('/')[1])
+			if @metal_config[:machine_options][:bootstrap_options].has_key?(:resource_pool)
+				expect(@vm.resourcePool.name).to eq(@metal_config[:machine_options][:bootstrap_options][:resource_pool].split('/')[1])
+			end
+		end
+		it "is in the correct host" do
+			if @metal_config[:machine_options][:bootstrap_options].has_key?(:host)
+				expect(@vm.runtime.host.name).to eq(@metal_config[:machine_options][:bootstrap_options][:host].split('/')[1])
+			end
 		end
 		it "is in the correct cluster" do
-			expect(@vm.resourcePool.owner.name).to eq(@metal_config[:machine_options][:bootstrap_options][:resource_pool].split('/')[0])
+			if @metal_config[:machine_options][:bootstrap_options].has_key?(:resource_pool)
+				expect(@vm.resourcePool.owner.name).to eq(@metal_config[:machine_options][:bootstrap_options][:resource_pool].split('/')[0])
+			end
 		end
 		it "is in the correct datacenter" do
 			expect(@connection.serviceInstance.find_datacenter(@metal_config[:machine_options][:bootstrap_options][:datacenter]).find_vm("#{@vm.parent.name}/#{@vm_name}")).not_to eq(nil)

@@ -94,9 +94,14 @@ module ChefMetalVsphere
 
     def do_vm_clone(dc_name, vm_template, vm_name, options)
       datacenter = dc(dc_name)
-      pool = options[:resource_pool] ? find_pool(datacenter, options[:resource_pool]) : vm_template.resourcePool
-      rspec = RbVmomi::VIM.VirtualMachineRelocateSpec(pool: pool)
-      raise ':resource_pool must be specified when cloning from a VM Template' if pool.nil?
+      if options.has_key?(:host)
+        host = find_host(datacenter, options[:host])
+        rspec = RbVmomi::VIM.VirtualMachineRelocateSpec(host: host) 
+      else
+        pool = options[:resource_pool] ? find_pool(datacenter, options[:resource_pool]) : vm_template.resourcePool
+        rspec = RbVmomi::VIM.VirtualMachineRelocateSpec(pool: pool)
+        raise 'either :host or :resource_pool must be specified when cloning from a VM Template' if pool.nil?
+      end
 
       unless options[:datastore].to_s.empty?
         rspec.datastore = find_datastore(datacenter, options[:datastore])
@@ -214,6 +219,29 @@ module ChefMetalVsphere
     def find_datastore(dc, datastore_name)
         baseEntity = dc.datastore
         baseEntity.find { |f| f.info.name == datastore_name } or raise "no such datastore #{datastore_name}"    
+    end
+
+    def find_host(dc, host_name)
+      baseEntity = dc.hostFolder
+      entityArray = host_name.split('/')
+      entityArray.each do |entityArrItem|
+        if entityArrItem != ''
+          if baseEntity.is_a? RbVmomi::VIM::Folder
+            baseEntity = baseEntity.childEntity.find { |f| f.name == entityArrItem } or nil
+          elsif baseEntity.is_a? RbVmomi::VIM::ClusterComputeResource or baseEntity.is_a? RbVmomi::VIM::ComputeResource
+            baseEntity = baseEntity.host.find { |f| f.name == entityArrItem } or nil
+          elsif baseEntity.is_a? RbVmomi::VIM::HostSystem
+            baseEntity = baseEntity.host.find { |f| f.name == entityArrItem } or nil
+          else
+            baseEntity = nil
+          end
+        end
+      end
+
+      raise "vSphere Host not found [#{host_name}]" if baseEntity.nil?
+
+      baseEntity = baseEntity.host if not baseEntity.is_a?(RbVmomi::VIM::HostSystem) and baseEntity.respond_to?(:host)
+      baseEntity
     end
 
     def find_pool(dc, pool_name)
