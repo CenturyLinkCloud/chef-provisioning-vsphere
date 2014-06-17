@@ -20,7 +20,7 @@ Gem::Specification.new do |s|
   s.files = %w(Rakefile README.md) + Dir.glob("{distro,lib,tasks,spec}/**/*", File::FNM_DOTMATCH).reject {|f| File.directory?(f) }
 
   s.add_dependency 'chef'
-  s.add_dependency 'rbvmomi'  # may need to lock nokogiri to 1.5.5
+  s.add_dependency 'rbvmomi', '~> 1.5.1'
   s.add_dependency 'clc-fork-chef-metal', '0.11.2.alpha.3'
 
   s.add_development_dependency 'rspec'
