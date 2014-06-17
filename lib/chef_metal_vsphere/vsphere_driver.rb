@@ -193,11 +193,13 @@ module ChefMetalVsphere
 
       wait_until_ready(action_handler, machine_spec, machine_options, vm)
 
+
       bootstrap_options = bootstrap_options_for(machine_spec, machine_options)
+      is_static = false
       if has_static_ip(bootstrap_options)
+        is_static = true
         transport = transport_for(machine_spec, machine_options, vm)
         if !transport.available?
-          puts "waiting for ip"
           Chef::Log.info "waiting for customizations to complete"
           now = Time.now.utc
           until (Time.now.utc - now) > 45 || (!vm.guest.ipAddress.nil? && vm.guest.ipAddress.length > 0) do
@@ -205,17 +207,13 @@ module ChefMetalVsphere
             sleep 5
           end
           if vm.guest.ipAddress.nil? || vm.guest.ipAddress.length == 0
-            puts "no ip"
             Chef::Log.info "rebooting..."
             if vm.guest.toolsRunningStatus != "guestToolsRunning"
-              puts "stating vm"
               Chef::Log.info "tools have stopped. current power state is #{vm.runtime.powerState} and tools state is #{vm.toolsRunningStatus}. powering up server..."
               start_vm(vm)
             else
-              puts "rebooting vm"
               restart_server(action_handler, machine_spec, vm)
             end
-            puts "trying again for ip"
             now = Time.now.utc
             until (Time.now.utc - now) > 60 || (!vm.guest.ipAddress.nil? && vm.guest.ipAddress.length > 0) do
               print "-"
@@ -224,8 +222,6 @@ module ChefMetalVsphere
           end
         end
       end
-
-      puts "my ip is #{vm.guest.ipAddress}"
 
       begin
         wait_for_transport(action_handler, machine_spec, machine_options, vm)
@@ -242,6 +238,25 @@ module ChefMetalVsphere
       end
 
       machine = machine_for(machine_spec, machine_options, vm)
+
+      if is_static
+        if machine.execute_always('host google.com').exitstatus != 0
+          distro = machine.execute_always("lsb_release -i | sed -e 's/Distributor ID:\t//g'").stdout.strip
+          if distro == 'Ubuntu'
+            distro_version = (machine.execute_always("lsb_release -r | sed -e s/[^0-9.]//g")).stdout.strip.to_f
+            if distro_version>= 12.04
+              Chef::Log.info "Ubuntu version 12.04 or greater. Need to patch DNS."
+              interfaces_file = "/etc/network/interfaces"
+              nameservers = bootstrap_options[:customization_spec][:ipsettings][:dnsServerList].join(' ')
+              machine.execute_always("if ! cat #{interfaces_file} | grep -q dns-search ; then echo 'dns-search #{machine_spec.name}' >> #{interfaces_file} ; fi")
+              machine.execute_always("if ! cat #{interfaces_file} | grep -q dns-nameservers ; then echo 'dns-nameservers #{nameservers}' >> #{interfaces_file} ; fi")
+              machine.execute_always('/etc/init.d/networking restart')
+              machine.execute_always('echo "ACTION=="add", SUBSYSTEM=="cpu", ATTR{online}="1"" > /etc/udev/rules.d/99-vmware-cpuhotplug-udev.rules')
+              machine.execute_always('apt-get -qq update')
+            end
+          end
+        end
+      end
 
       machine
     end
