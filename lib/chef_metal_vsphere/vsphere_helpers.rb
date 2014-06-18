@@ -164,17 +164,22 @@ module ChefMetalVsphere
       end
 
       unless options[:network_name].to_s.nil?
-        network = find_network(datacenter, options[:network_name])
-        card = vm_template.config.hardware.device.grep(RbVmomi::VIM::VirtualEthernetCard).first
-        begin
-          switch_port = RbVmomi::VIM.DistributedVirtualSwitchPortConnection(:switchUuid => network.config.distributedVirtualSwitch.uuid, :portgroupKey => network.key)
-          card.backing.port = switch_port
-        rescue
-          # not connected to a distibuted switch?
-          card.backing.deviceName = options[:network_name]
-        end
-        dev_spec = RbVmomi::VIM.VirtualDeviceConfigSpec(:device => card, :operation => "edit")
-        clone_spec.config.deviceChange.push dev_spec
+        config_spec_operation = RbVmomi::VIM::VirtualDeviceConfigSpecOperation('edit')
+        nic_backing_info = RbVmomi::VIM::VirtualEthernetCardNetworkBackingInfo(:deviceName => options[:network_name])
+        connectable = RbVmomi::VIM::VirtualDeviceConnectInfo(
+          :allowGuestControl => true,
+          :connected => true,
+          :startConnected => true)
+        device = RbVmomi::VIM::VirtualE1000(
+          :backing => nic_backing_info,
+          :deviceInfo => RbVmomi::VIM::Description(:label => "Network adapter 1", :summary => options[:network_name]),
+          :key => 4000,
+          :connectable => connectable)
+        device_spec = RbVmomi::VIM::VirtualDeviceConfigSpec(
+          :operation => config_spec_operation,
+          :device => device)
+
+        clone_spec.config.deviceChange.push device_spec
       end
 
       vm_template.CloneVM_Task(
@@ -209,11 +214,6 @@ module ChefMetalVsphere
     end
 
     vm
-    end
-
-    def find_network(dc, network_name)
-      baseEntity = dc.network
-      baseEntity.find { |f| f.name == network_name } or raise "no such network #{network_name}"
     end
 
     def find_datastore(dc, datastore_name)
