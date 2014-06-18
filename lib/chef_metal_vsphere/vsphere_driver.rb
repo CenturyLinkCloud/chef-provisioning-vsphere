@@ -164,11 +164,13 @@ module ChefMetalVsphere
       bootstrap_options.each_pair { |key,value| description << "  #{key}: #{value.inspect}" }
       action_handler.report_progress description
 
-      # TODO compare new options to existing and fail if we cannot change it
-      # over (perhaps introduce a boolean that will force a delete and recreate
-      # in such a case)
-      
-      vm = clone_vm(bootstrap_options)
+      vm = find_vm(bootstrap_options[:datacenter], bootstrap_options[:vm_folder], machine_spec.name)
+      server_id = nil
+      if vm
+        Chef::Log.info "machine already created: #{bootstrap_options[:vm_folder]}/#{machine_spec.name}"
+      else
+        vm = clone_vm(bootstrap_options)
+      end
 
       machine_spec.location = {
         'driver_url' => driver_url,
