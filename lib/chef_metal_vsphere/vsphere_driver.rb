@@ -245,7 +245,7 @@ module ChefMetalVsphere
 
       if is_static
         if machine.execute_always('host google.com').exitstatus != 0
-          distro = machine.execute_always("lsb_release -i | sed -e 's/Distributor ID:\t//g'").stdout.strip
+          distro = machine.execute_always("lsb_release -i | sed -e 's/Distributor ID:\\t//g'").stdout.strip
           if distro == 'Ubuntu'
             distro_version = (machine.execute_always("lsb_release -r | sed -e s/[^0-9.]//g")).stdout.strip.to_f
             if distro_version>= 12.04
