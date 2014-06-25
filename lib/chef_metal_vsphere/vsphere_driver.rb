@@ -244,10 +244,16 @@ module ChefMetalVsphere
       machine = machine_for(machine_spec, machine_options, vm)
 
       if is_static
-        if machine.execute_always('host google.com').exitstatus != 0
-          distro = machine.execute_always("lsb_release -i | sed -e 's/Distributor ID:\\t//g'").stdout.strip
+        host_lookup = machine.execute_always('host google.com')
+        if host_lookup.exitstatus != 0
+          if host_lookup.stdout.include?("setlocale: LC_ALL")
+            machine.execute_always('locale-gen en_US && update-locale LANG=en_US')
+          end
+          distro = machine.execute_always("lsb_release -i | sed -e 's/Distributor ID://g'").stdout.strip
+          Chef::Log.info "Found distro:#{distro}"
           if distro == 'Ubuntu'
             distro_version = (machine.execute_always("lsb_release -r | sed -e s/[^0-9.]//g")).stdout.strip.to_f
+            Chef::Log.info "Found distro version:#{distro_version}"
             if distro_version>= 12.04
               Chef::Log.info "Ubuntu version 12.04 or greater. Need to patch DNS."
               interfaces_file = "/etc/network/interfaces"
