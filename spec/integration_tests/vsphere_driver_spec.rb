@@ -48,7 +48,7 @@ describe "vsphere_driver" do
 			action_handler = ChefMetal::ActionHandler.new
 			@driver.allocate_machine(action_handler, @machine_spec, @metal_config[:machine_options])
 			@metal_config[:machine_options][:convergence_options] = {:chef_server => chef_server}
-			@driver.ready_machine(action_handler, @machine_spec, @metal_config[:machine_options])
+			machine = @driver.ready_machine(action_handler, @machine_spec, @metal_config[:machine_options])
 			@server_id = @machine_spec.location['server_id']
 			@connection = vim(@metal_config[:driver_options])
 			@vm = find_vm_by_id(@server_id, @connection)

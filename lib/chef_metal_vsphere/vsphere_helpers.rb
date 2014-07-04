@@ -75,7 +75,6 @@ module ChefMetalVsphere
 
     #folder could be like:  /Level1/Level2/folder_name
     def find_folder(dc_name, folder_name)
-      #dc(dc_name).vmFolder.childEntity.grep(RbVmomi::VIM::Folder).find { |x| x.name == folder_name }
       baseEntity = dc(dc_name).vmFolder
       if folder_name && folder_name.length > 0
         entityArray = folder_name.split('/')
@@ -135,16 +134,46 @@ module ChefMetalVsphere
             cust_hostname ||= RbVmomi::VIM::CustomizationFixedName.new(:name => vm_name)
             cust_hwclockutc = cust_options[:hw_clock_utc]
             cust_timezone = cust_options[:time_zone]
-            cust_prep = RbVmomi::VIM::CustomizationLinuxPrep.new(
-              :domain => cust_domain,
-              :hostName => cust_hostname,
-              :hwClockUTC => cust_hwclockutc,
-              :timeZone => cust_timezone)
-            cust_adapter_mapping = [RbVmomi::VIM::CustomizationAdapterMapping.new(:adapter => cust_ip_settings)]
-            cust_spec = RbVmomi::VIM::CustomizationSpec.new(
-              :identity => cust_prep,
-              :globalIPSettings => cust_global_ip_settings,
-              :nicSettingMap => cust_adapter_mapping)
+
+            if vm_template.config.guestId.start_with?('win')
+              cust_runonce = RbVmomi::VIM::CustomizationGuiRunOnce.new(
+                :commandList => [
+                  'winrm set winrm/config/client/auth @{Basic="true"}',
+                  'winrm set winrm/config/service/auth @{Basic="true"}',
+                  'winrm set winrm/config/service @{AllowUnencrypted="true"}',
+                  'shutdown -l'])
+              cust_id = RbVmomi::VIM::CustomizationIdentification.new(
+                :joinWorkgroup => 'WORKGROUP')
+              cust_password = RbVmomi::VIM::CustomizationPassword(
+                :plainText => true,
+                :value => options[:ssh][:password])
+              cust_gui_unattended = RbVmomi::VIM::CustomizationGuiUnattended.new(
+                :autoLogon => true,
+                :autoLogonCount => 1,
+                :password => cust_password,
+                :timeZone => cust_options[:win_time_zone])
+              cust_userdata = RbVmomi::VIM::CustomizationUserData.new(
+                :computerName => cust_hostname,
+                :fullName => cust_options[:org_name],
+                :orgName => cust_options[:org_name],
+                :productId => cust_options[:product_id])
+              cust_prep = RbVmomi::VIM::CustomizationSysprep.new(
+                :guiRunOnce => cust_runonce,
+                :identification => cust_id,
+                :guiUnattended => cust_gui_unattended,
+                :userData => cust_userdata)
+            else
+              cust_prep = RbVmomi::VIM::CustomizationLinuxPrep.new(
+                :domain => cust_domain,
+                :hostName => cust_hostname,
+                :hwClockUTC => cust_hwclockutc,
+                :timeZone => cust_timezone)
+            end
+              cust_adapter_mapping = [RbVmomi::VIM::CustomizationAdapterMapping.new(:adapter => cust_ip_settings)]
+              cust_spec = RbVmomi::VIM::CustomizationSpec.new(
+                :identity => cust_prep,
+                :globalIPSettings => cust_global_ip_settings,
+                :nicSettingMap => cust_adapter_mapping)
         else
           cust_spec = find_customization_spec(options[:customization_spec])
         end
@@ -170,7 +199,7 @@ module ChefMetalVsphere
           :allowGuestControl => true,
           :connected => true,
           :startConnected => true)
-        device = RbVmomi::VIM::VirtualE1000(
+        device = RbVmomi::VIM::VirtualVmxnet3(
           :backing => nic_backing_info,
           :deviceInfo => RbVmomi::VIM::Description(:label => "Network adapter 1", :summary => options[:network_name]),
           :key => 4000,

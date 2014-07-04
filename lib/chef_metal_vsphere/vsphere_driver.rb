@@ -197,7 +197,6 @@ module ChefMetalVsphere
 
       wait_until_ready(action_handler, machine_spec, machine_options, vm)
 
-
       bootstrap_options = bootstrap_options_for(machine_spec, machine_options)
       is_static = false
       if has_static_ip(bootstrap_options)
@@ -243,7 +242,7 @@ module ChefMetalVsphere
 
       machine = machine_for(machine_spec, machine_options, vm)
 
-      if is_static && !is_windows(vm)
+      if is_static && !is_windows?(vm)
         setup_ubuntu_dns(machine, bootstrap_options, machine_spec)
       end
 
@@ -414,7 +413,7 @@ module ChefMetalVsphere
 
     def is_windows?(vm)
       return false if vm.nil?
-      vm.guest.guestFamily == 'windowsGuest'
+      vm.config.guestId.start_with?('win')
     end
 
     def convergence_strategy_for(machine_spec, machine_options)
@@ -441,7 +440,7 @@ module ChefMetalVsphere
 
           _self = self
 
-          until remaining_wait_time(machine_spec, machine_options) || transport.available? do
+          until remaining_wait_time(machine_spec, machine_options) < 0 || transport.available? do
             print "."
             sleep 5
           end
@@ -460,7 +459,13 @@ module ChefMetalVsphere
     end
 
     def create_winrm_transport(machine_spec, machine_options, vm)
-      raise 'Windows guest VMs are not yet supported'
+      require 'chef_metal/transport/winrm'
+      bootstrap_options = bootstrap_options_for(machine_spec, machine_options)
+      ssh_options = bootstrap_options[:ssh]
+      remote_host = has_static_ip(bootstrap_options) ? bootstrap_options[:customization_spec][:ipsettings][:ip] : vm.guest.ipaddress
+      winrm_options = {:user => "#{remote_host}\\#{ssh_options[:user]}", :pass => ssh_options[:password], :disable_sspi => true}
+
+      ChefMetal::Transport::WinRM.new("http://#{remote_host}:5985/wsman", :plaintext, winrm_options, config)
     end
 
     def create_ssh_transport(machine_spec, machine_options, vm)
@@ -474,3 +479,6 @@ module ChefMetalVsphere
     end
   end
 end
+
+
+# wr=WinRM::WinRMWebService.new('http://172.21.20.196:5985/wsman', :plaintext, {:user => "cmvd-test-41f91\\Administrator", :pass => 'Password123', :basic_auth_only => true})
