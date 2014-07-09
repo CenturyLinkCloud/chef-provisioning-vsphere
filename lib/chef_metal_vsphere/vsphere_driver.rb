@@ -198,32 +198,34 @@ module ChefMetalVsphere
       wait_until_ready(action_handler, machine_spec, machine_options, vm)
 
       bootstrap_options = bootstrap_options_for(machine_spec, machine_options)
-      is_static = false
-      if has_static_ip(bootstrap_options)
-        is_static = true
+
+      transport = nil
+      if !ip_for(bootstrap_options, vm).nil?
         transport = transport_for(machine_spec, machine_options, vm)
-        if !transport.available?
-          Chef::Log.info "waiting for customizations to complete"
+      end
+
+      if transport.nil? || !transport.available?
+        action_handler.report_progress "waiting for customizations to complete"
+        now = Time.now.utc
+        until (Time.now.utc - now) > 45 || (!vm.guest.ipAddress.nil? && vm.guest.ipAddress.length > 0) do
+          print "-"
+          sleep 5
+        end
+        if vm.guest.ipAddress.nil? || vm.guest.ipAddress.length == 0
+          action_handler.report_progress "rebooting..."
+          if vm.guest.toolsRunningStatus != "guestToolsRunning"
+            action_handler.report_progress "tools have stopped. current power state is #{vm.runtime.powerState} and tools state is #{vm.toolsRunningStatus}. powering up server..."
+            start_vm(vm)
+          else
+            restart_server(action_handler, machine_spec, vm)
+          end
           now = Time.now.utc
-          until (Time.now.utc - now) > 45 || (!vm.guest.ipAddress.nil? && vm.guest.ipAddress.length > 0) do
+          until (Time.now.utc - now) > 60 || (!vm.guest.ipAddress.nil? && vm.guest.ipAddress.length > 0) do
             print "-"
             sleep 5
           end
-          if vm.guest.ipAddress.nil? || vm.guest.ipAddress.length == 0
-            Chef::Log.info "rebooting..."
-            if vm.guest.toolsRunningStatus != "guestToolsRunning"
-              Chef::Log.info "tools have stopped. current power state is #{vm.runtime.powerState} and tools state is #{vm.toolsRunningStatus}. powering up server..."
-              start_vm(vm)
-            else
-              restart_server(action_handler, machine_spec, vm)
-            end
-            now = Time.now.utc
-            until (Time.now.utc - now) > 60 || (!vm.guest.ipAddress.nil? && vm.guest.ipAddress.length > 0) do
-              print "-"
-              sleep 5
-            end
-          end
         end
+        action_handler.report_progress "IP address obtained: #{vm.guest.ipAddress}"
       end
 
       begin
@@ -242,7 +244,7 @@ module ChefMetalVsphere
 
       machine = machine_for(machine_spec, machine_options, vm)
 
-      if is_static && !is_windows?(vm)
+      if has_static_ip(bootstrap_options) && !is_windows?(vm)
         setup_ubuntu_dns(machine, bootstrap_options, machine_spec)
       end
 
@@ -462,7 +464,7 @@ module ChefMetalVsphere
       require 'chef_metal/transport/winrm'
       bootstrap_options = bootstrap_options_for(machine_spec, machine_options)
       ssh_options = bootstrap_options[:ssh]
-      remote_host = has_static_ip(bootstrap_options) ? bootstrap_options[:customization_spec][:ipsettings][:ip] : vm.guest.ipaddress
+      remote_host = ip_for(bootstrap_options, vm)
       winrm_options = {:user => "#{remote_host}\\#{ssh_options[:user]}", :pass => ssh_options[:password], :disable_sspi => true}
 
       ChefMetal::Transport::WinRM.new("http://#{remote_host}:5985/wsman", :plaintext, winrm_options, config)
@@ -473,12 +475,17 @@ module ChefMetalVsphere
       bootstrap_options = bootstrap_options_for(machine_spec, machine_options)
       ssh_options = bootstrap_options[:ssh]
       ssh_user = ssh_options[:user]
-      remote_host = has_static_ip(bootstrap_options) ? bootstrap_options[:customization_spec][:ipsettings][:ip] : vm.guest.ipaddress
+      remote_host = ip_for(bootstrap_options, vm)
 
       ChefMetal::Transport::SSH.new(remote_host, ssh_user, ssh_options, {}, config)
     end
+
+    def ip_for(bootstrap_options, vm)
+      if has_static_ip(bootstrap_options)
+        bootstrap_options[:customization_spec][:ipsettings][:ip]
+      else
+          vm.guest.ipAddress
+      end
+    end
   end
 end
-
-
-# wr=WinRM::WinRMWebService.new('http://172.21.20.196:5985/wsman', :plaintext, {:user => "cmvd-test-41f91\\Administrator", :pass => 'Password123', :basic_auth_only => true})

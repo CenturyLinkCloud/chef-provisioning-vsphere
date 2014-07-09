@@ -118,7 +118,7 @@ module ChefMetalVsphere
         if(options[:customization_spec].is_a?(Hash))
             cust_options = options[:customization_spec]
             raise ArgumentError, "domain is required" unless cust_options.key?(:domain)
-            if cust_options.key?(:ipsettings)
+            if cust_options.key?(:ipsettings) and cust_options[:ipsettings].key?(:ip)
               raise ArgumentError, "ip and subnetMask is required for static ip" unless cust_options[:ipsettings].key?(:ip) and
                                                                                         cust_options[:ipsettings].key?(:subnetMask)
               cust_ip_settings = RbVmomi::VIM::CustomizationIPSettings.new(cust_options[:ipsettings])
