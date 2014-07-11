@@ -91,6 +91,25 @@ module ChefMetalVsphere
       vim.serviceInstance.find_datacenter(dc_name) or raise("vSphere Datacenter not found [#{datacenter}]")
     end
 
+    def add_network_adapter(network_name, network_label) do
+        config_spec_operation = RbVmomi::VIM::VirtualDeviceConfigSpecOperation('edit')
+        nic_backing_info = RbVmomi::VIM::VirtualEthernetCardNetworkBackingInfo(:deviceName => network_name)
+        connectable = RbVmomi::VIM::VirtualDeviceConnectInfo(
+          :allowGuestControl => true,
+          :connected => true,
+          :startConnected => true)
+        device = RbVmomi::VIM::VirtualVmxnet3(
+          :backing => nic_backing_info,
+          :deviceInfo => RbVmomi::VIM::Description(:label => network_label, :summary => network_name),
+          :key => 4000,
+          :connectable => connectable)
+        device_spec = RbVmomi::VIM::VirtualDeviceConfigSpec(
+          :operation => config_spec_operation,
+          :device => device)
+
+        clone_spec.config.deviceChange.push device_spec
+    end
+
     def do_vm_clone(dc_name, vm_template, vm_name, options)
       datacenter = dc(dc_name)
       if options.has_key?(:host)
@@ -192,23 +211,15 @@ module ChefMetalVsphere
         clone_spec.config.memoryMB = options[:memory_mb]
       end
 
-      unless options[:network_name].to_s.nil?
-        config_spec_operation = RbVmomi::VIM::VirtualDeviceConfigSpecOperation('edit')
-        nic_backing_info = RbVmomi::VIM::VirtualEthernetCardNetworkBackingInfo(:deviceName => options[:network_name])
-        connectable = RbVmomi::VIM::VirtualDeviceConnectInfo(
-          :allowGuestControl => true,
-          :connected => true,
-          :startConnected => true)
-        device = RbVmomi::VIM::VirtualVmxnet3(
-          :backing => nic_backing_info,
-          :deviceInfo => RbVmomi::VIM::Description(:label => "Network adapter 1", :summary => options[:network_name]),
-          :key => 4000,
-          :connectable => connectable)
-        device_spec = RbVmomi::VIM::VirtualDeviceConfigSpec(
-          :operation => config_spec_operation,
-          :device => device)
+      unless options[:network_name].nil?
+        networks=options[:network_name]
+        if networks.kind_of?(String)
+          networks=[networks]
+        end
 
-        clone_spec.config.deviceChange.push device_spec
+        networks.each_index do |network, i|
+          add_network_adpter network "Network Adapter #{i+1}"
+        end
       end
 
       vm_template.CloneVM_Task(
