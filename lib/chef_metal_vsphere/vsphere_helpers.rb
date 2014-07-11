@@ -218,7 +218,7 @@ module ChefMetalVsphere
         end
 
         networks.each_index do |network, i|
-          add_network_adpter network "Network Adapter #{i+1}"
+          add_network_adapter network "Network Adapter #{i+1}"
         end
       end
 
