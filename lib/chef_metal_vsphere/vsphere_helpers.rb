@@ -91,8 +91,7 @@ module ChefMetalVsphere
       vim.serviceInstance.find_datacenter(dc_name) or raise("vSphere Datacenter not found [#{datacenter}]")
     end
 
-    def add_network_adapter(network_name, network_label) do
-        config_spec_operation = RbVmomi::VIM::VirtualDeviceConfigSpecOperation('edit')
+    def network_adapter_for(operation, network_name, network_label, device_key)
         nic_backing_info = RbVmomi::VIM::VirtualEthernetCardNetworkBackingInfo(:deviceName => network_name)
         connectable = RbVmomi::VIM::VirtualDeviceConnectInfo(
           :allowGuestControl => true,
@@ -101,16 +100,19 @@ module ChefMetalVsphere
         device = RbVmomi::VIM::VirtualVmxnet3(
           :backing => nic_backing_info,
           :deviceInfo => RbVmomi::VIM::Description(:label => network_label, :summary => network_name),
-          :key => 4000,
+          :key => device_key,
           :connectable => connectable)
-        device_spec = RbVmomi::VIM::VirtualDeviceConfigSpec(
-          :operation => config_spec_operation,
+        RbVmomi::VIM::VirtualDeviceConfigSpec(
+          :operation => operation,
           :device => device)
+    end
 
-        clone_spec.config.deviceChange.push device_spec
+    def find_ethernet_cards_for(vm)
+      vm.config.hardware.device.select {|d| d.is_a?(RbVmomi::VIM::VirtualEthernetCard)}
     end
 
     def do_vm_clone(dc_name, vm_template, vm_name, options)
+      deviceChanges = []
       datacenter = dc(dc_name)
       if options.has_key?(:host)
         host = find_host(datacenter, options[:host])
@@ -211,14 +213,28 @@ module ChefMetalVsphere
         clone_spec.config.memoryMB = options[:memory_mb]
       end
 
+
       unless options[:network_name].nil?
         networks=options[:network_name]
         if networks.kind_of?(String)
           networks=[networks]
         end
 
-        networks.each_index do |network, i|
-          add_network_adapter network "Network Adapter #{i+1}"
+        cards = find_ethernet_cards_for(vm_template)
+
+        key = 4000
+        networks.each_index do | i |
+          if card = cards.shift
+            key = card.key
+          operation = RbVmomi::VIM::VirtualDeviceConfigSpecOperation('edit')
+          clone_spec.config.deviceChange.push(
+            network_adapter_for(operation, networks[i], "Network Adapter #{i+1}", key))
+          else
+            key = key + 1
+            operation = RbVmomi::VIM::VirtualDeviceConfigSpecOperation('add')
+            deviceChanges.push(
+              network_adapter_for(operation, networks[i], "Network Adapter #{i+1}", key))
+          end
         end
       end
 
@@ -235,7 +251,7 @@ module ChefMetalVsphere
         raise ":datastore must be specified when adding a disk to a cloned vm"
       end
       idx = vm.disks.count
-      task = vm.ReconfigVM_Task(:spec => RbVmomi::VIM.VirtualMachineConfigSpec(:deviceChange =>[RbVmomi::VIM::VirtualDeviceConfigSpec(
+      deviceChanges.push(RbVmomi::VIM::VirtualDeviceConfigSpec(
             :operation     => :add,
             :fileOperation => :create,
             :device        => RbVmomi::VIM.VirtualDisk(
@@ -249,7 +265,11 @@ module ChefMetalVsphere
               :controllerKey => 1000,
               :unitNumber    => idx
             )
-      )]))
+      ))
+    end
+
+    unless deviceChanges.count == 0
+      task = vm.ReconfigVM_Task(:spec => RbVmomi::VIM.VirtualMachineConfigSpec(:deviceChange => deviceChanges))
       task.wait_for_completion
     end
 

@@ -73,8 +73,9 @@ describe "vsphere_driver" do
 		it "has the correct amount of memory" do
 			expect(@vm.config.hardware.memoryMB).to eq(@metal_config[:machine_options][:bootstrap_options][:memory_mb])
 		end
-		it "is on the correct network" do
-			expect(@vm.network[0].name).to eq(@metal_config[:machine_options][:bootstrap_options][:network_name])
+		it "is on the correct networks" do
+			expect(@vm.network.map {|n| n.name}).to include(@metal_config[:machine_options][:bootstrap_options][:network_name][0])
+			expect(@vm.network.map {|n| n.name}).to include(@metal_config[:machine_options][:bootstrap_options][:network_name][1])
 		end
 		it "is on the correct datastore" do
 			expect(@vm.datastore[0].name).to eq(@metal_config[:machine_options][:bootstrap_options][:datastore])
@@ -104,12 +105,12 @@ describe "vsphere_driver" do
 		it "has the correct IP address" do
 	      if @vm.guest.toolsRunningStatus != "guestToolsRunning"
 	      	now = Time.now.utc
-	        until (Time.now.utc - now) > 30 || (@vm.guest.toolsRunningStatus == "guestToolsRunning" && !@vm.guest.ipAddress.nil? && @vm.guest.ipAddress.length > 0) do
+	        until (Time.now.utc - now) > 30 || (@vm.guest.toolsRunningStatus == "guestToolsRunning" && @vm.guest.net.count == 2 && @vm.guest.net[1].ipAddress[1] == @metal_config[:machine_options][:bootstrap_options][:customization_spec][:ipsettings][:ip]) do
 	          print "."
 	          sleep 5
 	        end
 	      end
-			expect(@vm.guest.ipAddress).to eq(@metal_config[:machine_options][:bootstrap_options][:customization_spec][:ipsettings][:ip])
+			expect(@vm.guest.net[1].ipAddress[1]).to eq(@metal_config[:machine_options][:bootstrap_options][:customization_spec][:ipsettings][:ip])
 		end
     end
 

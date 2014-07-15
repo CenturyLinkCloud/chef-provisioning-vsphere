@@ -201,26 +201,27 @@ module ChefMetalVsphere
 
       transport = nil
       if !ip_for(bootstrap_options, vm).nil?
+        vm_ip = ip_for(bootstrap_options, vm)
         transport = transport_for(machine_spec, machine_options, vm)
       end
 
       if transport.nil? || !transport.available?
         action_handler.report_progress "waiting for customizations to complete"
         now = Time.now.utc
-        until (Time.now.utc - now) > 45 || (!vm.guest.ipAddress.nil? && vm.guest.ipAddress.length > 0) do
+        until (Time.now.utc - now) > 90 || (!vm.guest.ipAddress.nil? && (vm.guest.net.map { |net| net.ipAddress}.flatten) == vm_ip) do
           print "-"
           sleep 5
         end
         if vm.guest.ipAddress.nil? || vm.guest.ipAddress.length == 0
           action_handler.report_progress "rebooting..."
           if vm.guest.toolsRunningStatus != "guestToolsRunning"
-            action_handler.report_progress "tools have stopped. current power state is #{vm.runtime.powerState} and tools state is #{vm.toolsRunningStatus}. powering up server..."
+            action_handler.report_progress "tools have stopped. current power state is #{vm.runtime.powerState} and tools state is #{vm.guest.toolsRunningStatus}. powering up server..."
             start_vm(vm)
           else
             restart_server(action_handler, machine_spec, vm)
           end
           now = Time.now.utc
-          until (Time.now.utc - now) > 60 || (!vm.guest.ipAddress.nil? && vm.guest.ipAddress.length > 0) do
+          until (Time.now.utc - now) > 60 || (!vm.guest.ipAddress.nil? && (vm.guest.net.map { |net| net.ipAddress}.flatten) == vm_ip) do
             print "-"
             sleep 5
           end
