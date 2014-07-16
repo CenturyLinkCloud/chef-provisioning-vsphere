@@ -112,7 +112,55 @@ module ChefMetalVsphere
     end
 
     def do_vm_clone(dc_name, vm_template, vm_name, options)
-      deviceChanges = []
+      deviceAdditions = []
+
+      clone_spec = RbVmomi::VIM.VirtualMachineCloneSpec(
+        location: relocate_spec_for(dc_name, vm_template, options),
+        powerOn: false,
+        template: false,
+        config: RbVmomi::VIM.VirtualMachineConfigSpec(:deviceChange => Array.new)
+      )
+
+      clone_spec.customization = customization_options_from(vm_template, vm_name, options)
+
+      unless options[:annotation].to_s.nil?
+        clone_spec.config.annotation = options[:annotation]
+      end
+
+      unless options[:num_cpus].to_s.nil?
+        clone_spec.config.numCPUs = options[:num_cpus]
+      end
+
+      unless options[:memory_mb].to_s.nil?
+        clone_spec.config.memoryMB = options[:memory_mb]
+      end
+
+      unless options[:network_name].nil?
+        deviceAdditions, changes = network_device_changes(vm_template, options)
+        clone_spec.config.deviceChange = changes
+      end
+
+      vm_template.CloneVM_Task(
+        name: vm_name,
+        folder: find_folder(dc_name, options[:vm_folder]),
+        spec: clone_spec
+      ).wait_for_completion
+
+      vm = find_vm(dc_name, options[:vm_folder], vm_name)
+
+      unless options[:additional_disk_size_gb].to_s.nil?
+        deviceAdditions.push(virtual_disk_for(vm, options))
+      end
+
+      unless deviceAdditions.count == 0
+        task = vm.ReconfigVM_Task(:spec => RbVmomi::VIM.VirtualMachineConfigSpec(:deviceChange => deviceAdditions))
+        task.wait_for_completion
+      end
+
+      vm
+    end
+
+    def relocate_spec_for(dc_name, vm_template, options)
       datacenter = dc(dc_name)
       if options.has_key?(:host)
         host = find_host(datacenter, options[:host])
@@ -126,15 +174,66 @@ module ChefMetalVsphere
       unless options[:datastore].to_s.empty?
         rspec.datastore = find_datastore(datacenter, options[:datastore])
       end
+      rspec
+    end
 
-      clone_spec = RbVmomi::VIM.VirtualMachineCloneSpec(
-        location: rspec,
-        powerOn: false,
-        template: false
+    def virtual_disk_for(vm, options)
+      if options[:datastore].to_s.empty? 
+        raise ":datastore must be specified when adding a disk to a cloned vm"
+      end
+      idx = vm.disks.count
+      RbVmomi::VIM::VirtualDeviceConfigSpec(
+            :operation     => :add,
+            :fileOperation => :create,
+            :device        => RbVmomi::VIM.VirtualDisk(
+              :key           => idx,
+              :backing       => RbVmomi::VIM.VirtualDiskFlatVer2BackingInfo(
+                :fileName        => "[#{options[:datastore]}]",
+                :diskMode        => 'persistent',
+                :thinProvisioned => true
+              ),
+              :capacityInKB  => options[:additional_disk_size_gb] * 1024 * 1024,
+              :controllerKey => 1000,
+              :unitNumber    => idx
+            )
       )
+    end
 
-      clone_spec.config = RbVmomi::VIM.VirtualMachineConfigSpec(:deviceChange => Array.new)
+    def network_device_changes(vm_template, options)
+      additions = []
+      changes = []
+      networks=options[:network_name]
+      if networks.kind_of?(String)
+        networks=[networks]
+      end
 
+      cards = find_ethernet_cards_for(vm_template)
+
+      key = 4000
+      networks.each_index do | i |
+        if card = cards.shift
+          key = card.key
+          operation = RbVmomi::VIM::VirtualDeviceConfigSpecOperation('edit')
+          puts "changing template nic for #{networks[i]}"
+          changes.push(
+            network_adapter_for(operation, networks[i], "Network Adapter #{i+1}", key))
+        else
+          key = key + 1
+          operation = RbVmomi::VIM::VirtualDeviceConfigSpecOperation('add')
+          puts "will be adding nic for #{networks[i]}"
+          additions.push(
+            network_adapter_for(operation, networks[i], "Network Adapter #{i+1}", key))
+        end
+      end
+      [additions, changes]
+    end
+
+    def find_datastore(dc, datastore_name)
+        baseEntity = dc.datastore
+        baseEntity.find { |f| f.info.name == datastore_name } or raise "no such datastore #{datastore_name}"    
+    end
+
+    def customization_options_from(vm_template, vm_name, options)
       if options.has_key?(:customization_spec)
         if(options[:customization_spec].is_a?(Hash))
             cust_options = options[:customization_spec]
@@ -151,38 +250,12 @@ module ChefMetalVsphere
             cust_global_ip_settings = RbVmomi::VIM::CustomizationGlobalIPSettings.new
             cust_global_ip_settings.dnsServerList = cust_ip_settings.dnsServerList
             cust_global_ip_settings.dnsSuffixList = [cust_domain]
-            cust_hostname = RbVmomi::VIM::CustomizationFixedName.new(:name => cust_options[:hostname]) if cust_options.key?(:hostname)
-            cust_hostname ||= RbVmomi::VIM::CustomizationFixedName.new(:name => vm_name)
+            cust_hostname = hostname_from(options[:customization_spec], vm_name)
             cust_hwclockutc = cust_options[:hw_clock_utc]
             cust_timezone = cust_options[:time_zone]
 
             if vm_template.config.guestId.start_with?('win')
-              cust_runonce = RbVmomi::VIM::CustomizationGuiRunOnce.new(
-                :commandList => [
-                  'winrm set winrm/config/client/auth @{Basic="true"}',
-                  'winrm set winrm/config/service/auth @{Basic="true"}',
-                  'winrm set winrm/config/service @{AllowUnencrypted="true"}',
-                  'shutdown -l'])
-              cust_id = RbVmomi::VIM::CustomizationIdentification.new(
-                :joinWorkgroup => 'WORKGROUP')
-              cust_password = RbVmomi::VIM::CustomizationPassword(
-                :plainText => true,
-                :value => options[:ssh][:password])
-              cust_gui_unattended = RbVmomi::VIM::CustomizationGuiUnattended.new(
-                :autoLogon => true,
-                :autoLogonCount => 1,
-                :password => cust_password,
-                :timeZone => cust_options[:win_time_zone])
-              cust_userdata = RbVmomi::VIM::CustomizationUserData.new(
-                :computerName => cust_hostname,
-                :fullName => cust_options[:org_name],
-                :orgName => cust_options[:org_name],
-                :productId => cust_options[:product_id])
-              cust_prep = RbVmomi::VIM::CustomizationSysprep.new(
-                :guiRunOnce => cust_runonce,
-                :identification => cust_id,
-                :guiUnattended => cust_gui_unattended,
-                :userData => cust_userdata)
+              cust_prep = windows_prep_for(options, vm_name)
             else
               cust_prep = RbVmomi::VIM::CustomizationLinuxPrep.new(
                 :domain => cust_domain,
@@ -191,94 +264,52 @@ module ChefMetalVsphere
                 :timeZone => cust_timezone)
             end
               cust_adapter_mapping = [RbVmomi::VIM::CustomizationAdapterMapping.new(:adapter => cust_ip_settings)]
-              cust_spec = RbVmomi::VIM::CustomizationSpec.new(
+              RbVmomi::VIM::CustomizationSpec.new(
                 :identity => cust_prep,
                 :globalIPSettings => cust_global_ip_settings,
                 :nicSettingMap => cust_adapter_mapping)
         else
-          cust_spec = find_customization_spec(options[:customization_spec])
-        end
-        clone_spec.customization = cust_spec
-      end
-
-      unless options[:annotation].to_s.nil?
-        clone_spec.config.annotation = options[:annotation]
-      end
-
-      unless options[:num_cpus].to_s.nil?
-        clone_spec.config.numCPUs = options[:num_cpus]
-      end
-
-      unless options[:memory_mb].to_s.nil?
-        clone_spec.config.memoryMB = options[:memory_mb]
-      end
-
-
-      unless options[:network_name].nil?
-        networks=options[:network_name]
-        if networks.kind_of?(String)
-          networks=[networks]
-        end
-
-        cards = find_ethernet_cards_for(vm_template)
-
-        key = 4000
-        networks.each_index do | i |
-          if card = cards.shift
-            key = card.key
-          operation = RbVmomi::VIM::VirtualDeviceConfigSpecOperation('edit')
-          clone_spec.config.deviceChange.push(
-            network_adapter_for(operation, networks[i], "Network Adapter #{i+1}", key))
-          else
-            key = key + 1
-            operation = RbVmomi::VIM::VirtualDeviceConfigSpecOperation('add')
-            deviceChanges.push(
-              network_adapter_for(operation, networks[i], "Network Adapter #{i+1}", key))
-          end
+          find_customization_spec(options[:customization_spec])
         end
       end
+    end
 
-      vm_template.CloneVM_Task(
-        name: vm_name,
-        folder: find_folder(dc_name, options[:vm_folder]),
-        spec: clone_spec
-      ).wait_for_completion
+    def windows_prep_for(options, vm_name)
+      cust_options = options[:customization_spec]
+      cust_runonce = RbVmomi::VIM::CustomizationGuiRunOnce.new(
+        :commandList => [
+          'winrm set winrm/config/client/auth @{Basic="true"}',
+          'winrm set winrm/config/service/auth @{Basic="true"}',
+          'winrm set winrm/config/service @{AllowUnencrypted="true"}',
+          'shutdown -l'])
+      cust_id = RbVmomi::VIM::CustomizationIdentification.new(
+        :joinWorkgroup => 'WORKGROUP')
+      cust_password = RbVmomi::VIM::CustomizationPassword(
+        :plainText => true,
+        :value => options[:ssh][:password])
+      cust_gui_unattended = RbVmomi::VIM::CustomizationGuiUnattended.new(
+        :autoLogon => true,
+        :autoLogonCount => 1,
+        :password => cust_password,
+        :timeZone => cust_options[:win_time_zone])
+      cust_userdata = RbVmomi::VIM::CustomizationUserData.new(
+        :computerName => hostname_from(cust_options, vm_name),
+        :fullName => cust_options[:org_name],
+        :orgName => cust_options[:org_name],
+        :productId => cust_options[:product_id])
+      RbVmomi::VIM::CustomizationSysprep.new(
+        :guiRunOnce => cust_runonce,
+        :identification => cust_id,
+        :guiUnattended => cust_gui_unattended,
+        :userData => cust_userdata)
+    end
 
-    vm = find_vm(dc_name, options[:vm_folder], vm_name)
-
-    unless options[:additional_disk_size_gb].to_s.nil?
-      if options[:datastore].to_s.empty? 
-        raise ":datastore must be specified when adding a disk to a cloned vm"
+    def hostname_from(options, vm_name)
+      if options.key?(:hostname)
+        RbVmomi::VIM::CustomizationFixedName.new(:name => options[:hostname])
+      else
+        RbVmomi::VIM::CustomizationFixedName.new(:name => vm_name)
       end
-      idx = vm.disks.count
-      deviceChanges.push(RbVmomi::VIM::VirtualDeviceConfigSpec(
-            :operation     => :add,
-            :fileOperation => :create,
-            :device        => RbVmomi::VIM.VirtualDisk(
-              :key           => idx,
-              :backing       => RbVmomi::VIM.VirtualDiskFlatVer2BackingInfo(
-                :fileName        => "[#{options[:datastore]}]",
-                :diskMode        => 'persistent',
-                :thinProvisioned => true
-              ),
-              :capacityInKB  => options[:additional_disk_size_gb] * 1024 * 1024,
-              :controllerKey => 1000,
-              :unitNumber    => idx
-            )
-      ))
-    end
-
-    unless deviceChanges.count == 0
-      task = vm.ReconfigVM_Task(:spec => RbVmomi::VIM.VirtualMachineConfigSpec(:deviceChange => deviceChanges))
-      task.wait_for_completion
-    end
-
-    vm
-    end
-
-    def find_datastore(dc, datastore_name)
-        baseEntity = dc.datastore
-        baseEntity.find { |f| f.info.name == datastore_name } or raise "no such datastore #{datastore_name}"    
     end
 
     def find_host(dc, host_name)
