@@ -148,7 +148,7 @@ module ChefMetalVsphere
 
       vm = find_vm(dc_name, options[:vm_folder], vm_name)
 
-      unless options[:additional_disk_size_gb].to_s.nil?
+      unless options[:additional_disk_size_gb].nil?
         deviceAdditions.push(virtual_disk_for(vm, options))
       end
 
@@ -238,14 +238,20 @@ module ChefMetalVsphere
         if(options[:customization_spec].is_a?(Hash))
             cust_options = options[:customization_spec]
             raise ArgumentError, "domain is required" unless cust_options.key?(:domain)
+            cust_ip_settings = nil
             if cust_options.key?(:ipsettings) and cust_options[:ipsettings].key?(:ip)
               raise ArgumentError, "ip and subnetMask is required for static ip" unless cust_options[:ipsettings].key?(:ip) and
                                                                                         cust_options[:ipsettings].key?(:subnetMask)
               cust_ip_settings = RbVmomi::VIM::CustomizationIPSettings.new(cust_options[:ipsettings])
+              puts "customizing #{vm_name} with static IP #{cust_options[:ipsettings][:ip]}"
               cust_ip_settings.ip = RbVmomi::VIM::CustomizationFixedIp(:ipAddress => cust_options[:ipsettings][:ip])
             end
             cust_domain = cust_options[:domain]
-            cust_ip_settings ||= RbVmomi::VIM::CustomizationIPSettings.new(:ip => RbVmomi::VIM::CustomizationDhcpIpGenerator.new())
+            if cust_ip_settings.nil?
+              puts "customizing #{vm_name} with dynamic IP"
+              cust_ip_settings= RbVmomi::VIM::CustomizationIPSettings.new(:ip => RbVmomi::VIM::CustomizationDhcpIpGenerator.new())
+            end
+
             cust_ip_settings.dnsDomain = cust_domain
             cust_global_ip_settings = RbVmomi::VIM::CustomizationGlobalIPSettings.new
             cust_global_ip_settings.dnsServerList = cust_ip_settings.dnsServerList

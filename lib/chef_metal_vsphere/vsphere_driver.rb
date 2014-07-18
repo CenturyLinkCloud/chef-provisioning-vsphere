@@ -208,8 +208,8 @@ module ChefMetalVsphere
       if transport.nil? || !transport.available?
         action_handler.report_progress "waiting for customizations to complete and find #{vm_ip}"
         now = Time.now.utc
-        until (Time.now.utc - now) > 90 || (vm.guest.net.map { |net| net.ipAddress}.flatten).include?(vm_ip) do
-          print "-"
+        until (Time.now.utc - now) > 300 || (vm.guest.net.map { |net| net.ipAddress}.flatten).include?(vm_ip) do
+          puts "IP addresses on #{machine_spec.name} are #{vm.guest.net.map { |net| net.ipAddress}.flatten}"
           sleep 5
         end
         if !(vm.guest.net.map { |net| net.ipAddress}.flatten).include?(vm_ip)
