@@ -96,7 +96,7 @@ module ChefMetalVsphere
         connectable = RbVmomi::VIM::VirtualDeviceConnectInfo(
           :allowGuestControl => true,
           :connected => true,
-          :startConnected => true)
+          :startConnected => operation.value == 'edit')
         device = RbVmomi::VIM::VirtualVmxnet3(
           :backing => nic_backing_info,
           :deviceInfo => RbVmomi::VIM::Description(:label => network_label, :summary => network_name),
@@ -288,15 +288,27 @@ module ChefMetalVsphere
           'winrm set winrm/config/service/auth @{Basic="true"}',
           'winrm set winrm/config/service @{AllowUnencrypted="true"}',
           'shutdown -l'])
-      cust_id = RbVmomi::VIM::CustomizationIdentification.new(
-        :joinWorkgroup => 'WORKGROUP')
-      cust_password = RbVmomi::VIM::CustomizationPassword(
+
+      cust_login_password = RbVmomi::VIM::CustomizationPassword(
         :plainText => true,
         :value => options[:ssh][:password])
+      if cust_options.has_key?(:domain) and cust_options[:domain] != 'local'
+        cust_domain_password = RbVmomi::VIM::CustomizationPassword(
+          :plainText => true,
+          :value => cust_options[:domainAdminPassword])
+        cust_id = RbVmomi::VIM::CustomizationIdentification.new(
+          :joinDomain => cust_options[:domain],
+          :domainAdmin => cust_options[:domainAdmin],
+          :domainAdminPassword => cust_domain_password)
+        puts "joining domain #{cust_options[:domain]} with user: #{cust_options[:domainAdmin]}"
+      else
+        cust_id = RbVmomi::VIM::CustomizationIdentification.new(
+          :joinWorkgroup => 'WORKGROUP')
+      end
       cust_gui_unattended = RbVmomi::VIM::CustomizationGuiUnattended.new(
         :autoLogon => true,
         :autoLogonCount => 1,
-        :password => cust_password,
+        :password => cust_login_password,
         :timeZone => cust_options[:win_time_zone])
       cust_userdata = RbVmomi::VIM::CustomizationUserData.new(
         :computerName => hostname_from(cust_options, vm_name),

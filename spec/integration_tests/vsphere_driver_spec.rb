@@ -65,7 +65,14 @@ describe "vsphere_driver" do
 			expect(@vm.config.instanceUuid).to eq(@machine_spec.location['server_id'])
 		end
 		it "has the correct name" do
-			expect(@vm.config.name).to eq(@vm_name)
+	      	now = Time.now.utc
+	      	trimmed_name = @vm.config.guestId.start_with?('win') ? @vm_name.byteslice(0,15) : @vm_name
+	      	expected_name="#{trimmed_name}.#{@metal_config[:machine_options][:bootstrap_options][:customization_spec][:domain]}"
+	        until (Time.now.utc - now) > 30 || (@vm.guest.hostName == expected_name) do
+	          print "."
+	          sleep 5
+	        end
+			expect(@vm.guest.hostName).to eq(expected_name)
 		end
 		it "has the correct number of CPUs" do
 			expect(@vm.config.hardware.numCPU).to eq(@metal_config[:machine_options][:bootstrap_options][:num_cpus])
