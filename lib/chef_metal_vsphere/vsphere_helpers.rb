@@ -111,7 +111,7 @@ module ChefMetalVsphere
       vm.config.hardware.device.select {|d| d.is_a?(RbVmomi::VIM::VirtualEthernetCard)}
     end
 
-    def do_vm_clone(dc_name, vm_template, vm_name, options)
+    def do_vm_clone(action_handler, dc_name, vm_template, vm_name, options)
       deviceAdditions = []
 
       clone_spec = RbVmomi::VIM.VirtualMachineCloneSpec(
@@ -121,7 +121,7 @@ module ChefMetalVsphere
         config: RbVmomi::VIM.VirtualMachineConfigSpec(:deviceChange => Array.new)
       )
 
-      clone_spec.customization = customization_options_from(vm_template, vm_name, options)
+      clone_spec.customization = customization_options_from(action_handler, vm_template, vm_name, options)
 
       unless options[:annotation].to_s.nil?
         clone_spec.config.annotation = options[:annotation]
@@ -136,7 +136,7 @@ module ChefMetalVsphere
       end
 
       unless options[:network_name].nil?
-        deviceAdditions, changes = network_device_changes(vm_template, options)
+        deviceAdditions, changes = network_device_changes(action_handler, vm_template, options)
         clone_spec.config.deviceChange = changes
       end
 
@@ -199,7 +199,7 @@ module ChefMetalVsphere
       )
     end
 
-    def network_device_changes(vm_template, options)
+    def network_device_changes(action_handler, vm_template, options)
       additions = []
       changes = []
       networks=options[:network_name]
@@ -214,13 +214,13 @@ module ChefMetalVsphere
         if card = cards.shift
           key = card.key
           operation = RbVmomi::VIM::VirtualDeviceConfigSpecOperation('edit')
-          puts "changing template nic for #{networks[i]}"
+          action_handler.report_progress "changing template nic for #{networks[i]}"
           changes.push(
             network_adapter_for(operation, networks[i], "Network Adapter #{i+1}", key))
         else
           key = key + 1
           operation = RbVmomi::VIM::VirtualDeviceConfigSpecOperation('add')
-          puts "will be adding nic for #{networks[i]}"
+          action_handler.report_progress "will be adding nic for #{networks[i]}"
           additions.push(
             network_adapter_for(operation, networks[i], "Network Adapter #{i+1}", key))
         end
@@ -233,7 +233,7 @@ module ChefMetalVsphere
         baseEntity.find { |f| f.info.name == datastore_name } or raise "no such datastore #{datastore_name}"    
     end
 
-    def customization_options_from(vm_template, vm_name, options)
+    def customization_options_from(action_handler, vm_template, vm_name, options)
       if options.has_key?(:customization_spec)
         if(options[:customization_spec].is_a?(Hash))
             cust_options = options[:customization_spec]
@@ -243,12 +243,12 @@ module ChefMetalVsphere
               raise ArgumentError, "ip and subnetMask is required for static ip" unless cust_options[:ipsettings].key?(:ip) and
                                                                                         cust_options[:ipsettings].key?(:subnetMask)
               cust_ip_settings = RbVmomi::VIM::CustomizationIPSettings.new(cust_options[:ipsettings])
-              puts "customizing #{vm_name} with static IP #{cust_options[:ipsettings][:ip]}"
+              action_handler.report_progress "customizing #{vm_name} with static IP #{cust_options[:ipsettings][:ip]}"
               cust_ip_settings.ip = RbVmomi::VIM::CustomizationFixedIp(:ipAddress => cust_options[:ipsettings][:ip])
             end
             cust_domain = cust_options[:domain]
             if cust_ip_settings.nil?
-              puts "customizing #{vm_name} with dynamic IP"
+              action_handler.report_progress "customizing #{vm_name} with dynamic IP"
               cust_ip_settings= RbVmomi::VIM::CustomizationIPSettings.new(:ip => RbVmomi::VIM::CustomizationDhcpIpGenerator.new())
             end
 
@@ -261,7 +261,7 @@ module ChefMetalVsphere
             cust_timezone = cust_options[:time_zone]
 
             if vm_template.config.guestId.start_with?('win')
-              cust_prep = windows_prep_for(options, vm_name)
+              cust_prep = windows_prep_for(action_handler, options, vm_name)
             else
               cust_prep = RbVmomi::VIM::CustomizationLinuxPrep.new(
                 :domain => cust_domain,
@@ -280,7 +280,7 @@ module ChefMetalVsphere
       end
     end
 
-    def windows_prep_for(options, vm_name)
+    def windows_prep_for(action_handler, options, vm_name)
       cust_options = options[:customization_spec]
       cust_runonce = RbVmomi::VIM::CustomizationGuiRunOnce.new(
         :commandList => [
@@ -300,7 +300,7 @@ module ChefMetalVsphere
           :joinDomain => cust_options[:domain],
           :domainAdmin => cust_options[:domainAdmin],
           :domainAdminPassword => cust_domain_password)
-        puts "joining domain #{cust_options[:domain]} with user: #{cust_options[:domainAdmin]}"
+        action_handler.report_progress "joining domain #{cust_options[:domain]} with user: #{cust_options[:domainAdmin]}"
       else
         cust_id = RbVmomi::VIM::CustomizationIdentification.new(
           :joinWorkgroup => 'WORKGROUP')

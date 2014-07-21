@@ -169,7 +169,7 @@ module ChefMetalVsphere
       if vm
         Chef::Log.info "machine already created: #{bootstrap_options[:vm_folder]}/#{machine_spec.name}"
       else
-        vm = clone_vm(bootstrap_options)
+        vm = clone_vm(action_handler, bootstrap_options)
       end
 
       machine_spec.location = {
@@ -387,7 +387,7 @@ module ChefMetalVsphere
       bootstrap_options
     end
 
-    def clone_vm(bootstrap_options)
+    def clone_vm(action_handler, bootstrap_options)
       vm_name         = bootstrap_options[:name]
       datacenter      = bootstrap_options[:datacenter]
       template_folder = bootstrap_options[:template_folder]
@@ -398,7 +398,7 @@ module ChefMetalVsphere
 
       vm_template = find_vm(datacenter, template_folder, template_name) or raise("vSphere VM Template not found [#{template_folder}/#{template_name}]")
 
-      do_vm_clone(datacenter, vm_template, vm_name, bootstrap_options)
+      do_vm_clone(action_handler, datacenter, vm_template, vm_name, bootstrap_options)
     end
 
     def machine_for(machine_spec, machine_options, vm = nil)
