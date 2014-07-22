@@ -207,10 +207,11 @@ module ChefMetalVsphere
       end
 
       if transport.nil? || !transport.available?
-        action_handler.report_progress "waiting for customizations to complete and find #{vm_ip}"
+        action_handler.report_progress "waiting up to #{machine_options[:ready_timeout]} seconds for customizations to complete and find #{vm_ip}"
         now = Time.now.utc
+
         until (Time.now.utc - now) > machine_options[:ready_timeout] || (vm.guest.net.map { |net| net.ipAddress}.flatten).include?(vm_ip) do
-          puts "IP addresses on #{machine_spec.name} are #{vm.guest.net.map { |net| net.ipAddress}.flatten}"
+          action_handler.report_progress "IP addresses on #{machine_spec.name} are #{vm.guest.net.map { |net| net.ipAddress}.flatten}"
           sleep 5
         end
         if !(vm.guest.net.map { |net| net.ipAddress}.flatten).include?(vm_ip)
