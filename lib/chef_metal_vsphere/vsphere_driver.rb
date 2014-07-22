@@ -27,6 +27,7 @@ module ChefMetalVsphere
         } },
                        :machine_options => { :start_timeout => 600, 
                                              :create_timeout => 600, 
+                                             :ready_timeout => 300,
                                              :bootstrap_options => { :ssh => { :port => 22,
                                                                                :user => 'root' },
                                                                      :key_name => 'metal_default',
@@ -208,7 +209,7 @@ module ChefMetalVsphere
       if transport.nil? || !transport.available?
         action_handler.report_progress "waiting for customizations to complete and find #{vm_ip}"
         now = Time.now.utc
-        until (Time.now.utc - now) > 300 || (vm.guest.net.map { |net| net.ipAddress}.flatten).include?(vm_ip) do
+        until (Time.now.utc - now) > machine_options[:ready_timeout] || (vm.guest.net.map { |net| net.ipAddress}.flatten).include?(vm_ip) do
           puts "IP addresses on #{machine_spec.name} are #{vm.guest.net.map { |net| net.ipAddress}.flatten}"
           sleep 5
         end
