@@ -96,7 +96,7 @@ module ChefMetalVsphere
         connectable = RbVmomi::VIM::VirtualDeviceConnectInfo(
           :allowGuestControl => true,
           :connected => true,
-          :startConnected => operation.value == 'edit')
+          :startConnected => true)
         device = RbVmomi::VIM::VirtualVmxnet3(
           :backing => nic_backing_info,
           :deviceInfo => RbVmomi::VIM::Description(:label => network_label, :summary => network_name),
@@ -149,15 +149,19 @@ module ChefMetalVsphere
       vm = find_vm(dc_name, options[:vm_folder], vm_name)
 
       unless options[:additional_disk_size_gb].nil?
-        deviceAdditions.push(virtual_disk_for(vm, options))
-      end
-
-      unless deviceAdditions.count == 0
-        task = vm.ReconfigVM_Task(:spec => RbVmomi::VIM.VirtualMachineConfigSpec(:deviceChange => deviceAdditions))
+        task = vm.ReconfigVM_Task(:spec => RbVmomi::VIM.VirtualMachineConfigSpec(:deviceChange => [virtual_disk_for(vm, options)]))
         task.wait_for_completion
       end
 
       vm
+    end
+
+    def add_extra_nic(action_handler, vm_template, options, vm)
+      deviceAdditions, changes = network_device_changes(action_handler, vm_template, options)
+      if deviceAdditions.count > 0
+        task = vm.ReconfigVM_Task(:spec => RbVmomi::VIM.VirtualMachineConfigSpec(:deviceChange => deviceAdditions))
+        task.wait_for_completion
+      end
     end
 
     def relocate_spec_for(dc_name, vm_template, options)
@@ -171,7 +175,7 @@ module ChefMetalVsphere
         raise 'either :host or :resource_pool must be specified when cloning from a VM Template' if pool.nil?
       end
 
-      if options.has_key?(:use_linked_template)
+      if options.has_key?(:use_linked_clone)
         create_delta_disk(vm_template)
         rspec.diskMoveType = :moveChildMostDiskBacking
       else
@@ -179,7 +183,7 @@ module ChefMetalVsphere
           rspec.datastore = find_datastore(datacenter, options[:datastore])
         end
       end
-      
+
       rspec
     end
 

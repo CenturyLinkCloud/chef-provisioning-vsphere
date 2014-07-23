@@ -201,12 +201,12 @@ module ChefMetalVsphere
       bootstrap_options = bootstrap_options_for(machine_spec, machine_options)
 
       transport = nil
-      if !ip_for(bootstrap_options, vm).nil?
-        vm_ip = ip_for(bootstrap_options, vm)
+      vm_ip = ip_for(bootstrap_options, vm)
+      if !vm_ip.nil?
         transport = transport_for(machine_spec, machine_options, vm)
       end
 
-      if transport.nil? || !transport.available?
+      if transport.nil? || !transport.available? || !(vm.guest.net.map { |net| net.ipAddress}.flatten).include?(vm_ip)
         action_handler.report_progress "waiting up to #{machine_options[:ready_timeout]} seconds for customizations to complete and find #{vm_ip}"
         now = Time.now.utc
 
@@ -231,6 +231,18 @@ module ChefMetalVsphere
         action_handler.report_progress "IP address obtained: #{vm.guest.ipAddress}"
       end
 
+      domain = bootstrap_options[:customization_spec][:domain]
+      if vm.config.guestId.start_with?('win') && domain != 'local'
+        now = Time.now.utc
+        trimmed_name = machine_spec.name.byteslice(0,15)
+        expected_name="#{trimmed_name}.#{domain}"
+        action_handler.report_progress "waiting to domain join and be named expected_name"
+        until (Time.now.utc - now) > 30 || (vm.guest.hostName == expected_name) do
+          print "."
+          sleep 5
+        end
+      end
+
       begin
         wait_for_transport(action_handler, machine_spec, machine_options, vm)
       rescue Timeout::Error
@@ -251,6 +263,8 @@ module ChefMetalVsphere
         setup_ubuntu_dns(machine, bootstrap_options, machine_spec)
       end
 
+      add_extra_nic(action_handler, vm_template_for(bootstrap_options), bootstrap_options, vm)
+      
       machine
     end
 
@@ -392,15 +406,20 @@ module ChefMetalVsphere
     def clone_vm(action_handler, bootstrap_options)
       vm_name         = bootstrap_options[:name]
       datacenter      = bootstrap_options[:datacenter]
-      template_folder = bootstrap_options[:template_folder]
-      template_name   = bootstrap_options[:template_name]
 
       vm = find_vm(datacenter, bootstrap_options[:vm_folder], vm_name)
       return vm if vm
 
-      vm_template = find_vm(datacenter, template_folder, template_name) or raise("vSphere VM Template not found [#{template_folder}/#{template_name}]")
+      vm_template = vm_template_for(bootstrap_options)
 
       do_vm_clone(action_handler, datacenter, vm_template, vm_name, bootstrap_options)
+    end
+
+    def vm_template_for(bootstrap_options)
+      datacenter      = bootstrap_options[:datacenter]
+      template_folder = bootstrap_options[:template_folder]
+      template_name   = bootstrap_options[:template_name]
+      find_vm(datacenter, template_folder, template_name) or raise("vSphere VM Template not found [#{template_folder}/#{template_name}]")
     end
 
     def machine_for(machine_spec, machine_options, vm = nil)
