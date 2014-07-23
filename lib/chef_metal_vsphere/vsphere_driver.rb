@@ -485,7 +485,7 @@ module ChefMetalVsphere
       bootstrap_options = bootstrap_options_for(machine_spec, machine_options)
       ssh_options = bootstrap_options[:ssh]
       remote_host = ip_for(bootstrap_options, vm)
-      winrm_options = {:user => "#{remote_host}\\#{ssh_options[:user]}", :pass => ssh_options[:password], :disable_sspi => true}
+      winrm_options = {:user => "#{remote_host}\\#{ssh_options[:user]}", :pass => ssh_options[:password], :basic_auth_only => true}
 
       ChefMetal::Transport::WinRM.new("http://#{remote_host}:5985/wsman", :plaintext, winrm_options, config)
     end
