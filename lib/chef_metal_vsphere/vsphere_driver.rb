@@ -236,12 +236,14 @@ module ChefMetalVsphere
         now = Time.now.utc
         trimmed_name = machine_spec.name.byteslice(0,15)
         expected_name="#{trimmed_name}.#{domain}"
-        action_handler.report_progress "waiting to domain join and be named expected_name"
+        action_handler.report_progress "waiting to domain join and be named #{expected_name}"
         until (Time.now.utc - now) > 30 || (vm.guest.hostName == expected_name) do
           print "."
           sleep 5
         end
       end
+
+      add_extra_nic(action_handler, vm_template_for(bootstrap_options), bootstrap_options, vm)
 
       begin
         wait_for_transport(action_handler, machine_spec, machine_options, vm)
@@ -263,8 +265,6 @@ module ChefMetalVsphere
         setup_ubuntu_dns(machine, bootstrap_options, machine_spec)
       end
 
-      add_extra_nic(action_handler, vm_template_for(bootstrap_options), bootstrap_options, vm)
-      
       machine
     end
 
@@ -461,8 +461,6 @@ module ChefMetalVsphere
       if !transport.available?
         if action_handler.should_perform_actions
           action_handler.report_progress "waiting for #{machine_spec.name} (#{vm.config.instanceUuid} on #{driver_url}) to be connectable (transport up and running) ..."
-
-          _self = self
 
           until remaining_wait_time(machine_spec, machine_options) < 0 || transport.available? do
             print "."

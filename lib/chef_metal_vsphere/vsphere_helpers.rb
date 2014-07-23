@@ -158,9 +158,16 @@ module ChefMetalVsphere
 
     def add_extra_nic(action_handler, vm_template, options, vm)
       deviceAdditions, changes = network_device_changes(action_handler, vm_template, options)
+
       if deviceAdditions.count > 0
-        task = vm.ReconfigVM_Task(:spec => RbVmomi::VIM.VirtualMachineConfigSpec(:deviceChange => deviceAdditions))
-        task.wait_for_completion
+        current_networks = find_ethernet_cards_for(vm).map{|card| card.backing.deviceName}
+        new_devices = deviceAdditions.select { |device| !current_networks.include?(device.device.backing.deviceName)}
+        
+        if new_devices.count > 0
+          action_handler.report_progress "Adding extra NICs"
+          task = vm.ReconfigVM_Task(:spec => RbVmomi::VIM.VirtualMachineConfigSpec(:deviceChange => new_devices))
+          task.wait_for_completion
+        end
       end
     end
 
