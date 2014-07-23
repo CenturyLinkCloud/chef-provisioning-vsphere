@@ -171,11 +171,41 @@ module ChefMetalVsphere
         raise 'either :host or :resource_pool must be specified when cloning from a VM Template' if pool.nil?
       end
 
-      unless options[:datastore].to_s.empty?
-        rspec.datastore = find_datastore(datacenter, options[:datastore])
+      if options.has_key?(:use_linked_template)
+        create_delta_disk(vm_template)
+        rspec.diskMoveType = :moveChildMostDiskBacking
+      else
+        unless options[:datastore].to_s.empty?
+          rspec.datastore = find_datastore(datacenter, options[:datastore])
+        end
       end
+      
       rspec
     end
+
+    def create_delta_disk(vm_template)
+        disks = vm_template.config.hardware.device.grep(RbVmomi::VIM::VirtualDisk)
+        disks.select { |disk| disk.backing.parent == nil }.each do |disk|
+          spec = {
+              :deviceChange => [
+                  {
+                      :operation => :remove,
+                      :device => disk
+                  },
+                  {
+                      :operation => :add,
+                      :fileOperation => :create,
+                      :device => disk.dup.tap { |new_disk|
+                        new_disk.backing = new_disk.backing.dup
+                        new_disk.backing.fileName = "[#{disk.backing.datastore.name}]"
+                        new_disk.backing.parent = disk.backing
+                      },
+                  }
+              ]
+          }
+          vm_template.ReconfigVM_Task(:spec => spec).wait_for_completion
+          end
+      end
 
     def virtual_disk_for(vm, options)
       if options[:datastore].to_s.empty? 
