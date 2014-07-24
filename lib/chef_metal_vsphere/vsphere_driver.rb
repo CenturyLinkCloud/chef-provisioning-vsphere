@@ -243,8 +243,6 @@ module ChefMetalVsphere
         end
       end
 
-      add_extra_nic(action_handler, vm_template_for(bootstrap_options), bootstrap_options, vm)
-
       begin
         wait_for_transport(action_handler, machine_spec, machine_options, vm)
       rescue Timeout::Error
@@ -260,6 +258,13 @@ module ChefMetalVsphere
       end
 
       machine = machine_for(machine_spec, machine_options, vm)
+
+      new_nics = add_extra_nic(action_handler, vm_template_for(bootstrap_options), bootstrap_options, vm)
+      if is_windows?(vm) && !new_nics.nil?
+        new_nics.each do |nic|
+          machine.execute_always("Disable-Netadapter -Name '#{nic.device.deviceInfo.label}' -Confirm:$false")
+        end
+      end
 
       if has_static_ip(bootstrap_options) && !is_windows?(vm)
         setup_ubuntu_dns(machine, bootstrap_options, machine_spec)
@@ -485,7 +490,7 @@ module ChefMetalVsphere
       bootstrap_options = bootstrap_options_for(machine_spec, machine_options)
       ssh_options = bootstrap_options[:ssh]
       remote_host = ip_for(bootstrap_options, vm)
-      winrm_options = {:user => "#{remote_host}\\#{ssh_options[:user]}", :pass => ssh_options[:password], :basic_auth_only => true}
+      winrm_options = {:user => "#{ssh_options[:user]}", :pass => ssh_options[:password], :basic_auth_only => true}
 
       ChefMetal::Transport::WinRM.new("http://#{remote_host}:5985/wsman", :plaintext, winrm_options, config)
     end

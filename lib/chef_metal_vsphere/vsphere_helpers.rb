@@ -167,6 +167,7 @@ module ChefMetalVsphere
           action_handler.report_progress "Adding extra NICs"
           task = vm.ReconfigVM_Task(:spec => RbVmomi::VIM.VirtualMachineConfigSpec(:deviceChange => new_devices))
           task.wait_for_completion
+          new_devices
         end
       end
     end
@@ -252,18 +253,19 @@ module ChefMetalVsphere
 
       key = 4000
       networks.each_index do | i |
+        label = "Ethernet #{i+1}"
         if card = cards.shift
           key = card.key
           operation = RbVmomi::VIM::VirtualDeviceConfigSpecOperation('edit')
           action_handler.report_progress "changing template nic for #{networks[i]}"
           changes.push(
-            network_adapter_for(operation, networks[i], "Network Adapter #{i+1}", key))
+            network_adapter_for(operation, networks[i], label, key))
         else
           key = key + 1
           operation = RbVmomi::VIM::VirtualDeviceConfigSpecOperation('add')
           action_handler.report_progress "will be adding nic for #{networks[i]}"
           additions.push(
-            network_adapter_for(operation, networks[i], "Network Adapter #{i+1}", key))
+            network_adapter_for(operation, networks[i], label, key))
         end
       end
       [additions, changes]
