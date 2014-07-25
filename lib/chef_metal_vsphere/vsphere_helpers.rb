@@ -186,10 +186,10 @@ module ChefMetalVsphere
       if options.has_key?(:use_linked_clone)
         create_delta_disk(vm_template)
         rspec.diskMoveType = :moveChildMostDiskBacking
-      else
-        unless options[:datastore].to_s.empty?
-          rspec.datastore = find_datastore(datacenter, options[:datastore])
-        end
+      end
+
+      unless options[:datastore].to_s.empty?
+        rspec.datastore = find_datastore(datacenter, options[:datastore])
       end
 
       rspec
