@@ -1,5 +1,4 @@
 require 'chef_metal_vsphere/vsphere_driver'
-#require 'chef_metal_vsphere/ubuntu_patch'
 require 'chef_metal/chef_machine_spec'
 
 	# A file named config.rb in the same directory as this spec file 
@@ -41,7 +40,7 @@ describe "vsphere_driver" do
 		@vm_name = "cmvd-test-#{SecureRandom.hex}"
 		@metal_config = eval File.read(File.expand_path('../config.rb', __FILE__))
 		Cheffish.honor_local_mode do
-			chef_server = Cheffish.default_chef_server(@metal_config)
+			chef_server = Cheffish.default_chef_server(Cheffish.profiled_config)
 			puts "chef server:#{chef_server}"
 			@machine_spec = ChefMetal::ChefMachineSpec.new({'name' => @vm_name}, chef_server)
 			@driver = ChefMetal.driver_for_url("vsphere://#{@metal_config[:driver_options][:host]}", @metal_config)
@@ -125,7 +124,7 @@ describe "vsphere_driver" do
 
 		it "removes the machine" do
 			Cheffish.honor_local_mode do
-				chef_server = Cheffish.default_chef_server(@metal_config)
+				chef_server = Cheffish.default_chef_server(Cheffish.profiled_config)
 				driver = ChefMetal.driver_for_url("vsphere://#{@metal_config[:driver_options][:host]}", @metal_config)
 				action_handler = ChefMetal::ActionHandler.new
 				machine_spec = ChefMetal::ChefMachineSpec.new({'name' => @vm_name}, chef_server)

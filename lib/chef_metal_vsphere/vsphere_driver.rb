@@ -228,7 +228,8 @@ module ChefMetalVsphere
             sleep 5
           end
         end
-        action_handler.report_progress "IP address obtained: #{vm.guest.ipAddress}"
+        machine_spec.location['ipaddress'] = vm.guest.ipAddress
+        action_handler.report_progress "IP address obtained: #{machine_spec.location['ipaddress']}"
       end
 
       domain = bootstrap_options[:customization_spec][:domain]
