@@ -223,7 +223,8 @@ module ChefMetalVsphere
             restart_server(action_handler, machine_spec, vm)
           end
           now = Time.now.utc
-          until (Time.now.utc - now) > 60 || (vm.guest.net.map { |net| net.ipAddress}.flatten).include?(vm_ip) do
+          until (Time.now.utc - now) > 90 || (vm.guest.net.map { |net| net.ipAddress}.flatten).include?(vm_ip) do
+            vm_ip = ip_for(bootstrap_options, vm) if vm_ip.nil?
             print "-"
             sleep 5
           end
