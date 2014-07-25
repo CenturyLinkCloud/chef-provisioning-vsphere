@@ -7,7 +7,7 @@ module Kitchen
   module Driver
   	module VsphereCommon
       def create(state)
-        config[:server_name] ||= "kitchen-#{instance.name}-#{SecureRandom.hex}"
+        config[:server_name] ||= "kitchen-#{SecureRandom.hex}-#{instance.name}"
         state[:username] = config[:machine_options][:bootstrap_options][:ssh][:user]
         state[:password] = config[:machine_options][:bootstrap_options][:ssh][:password]
         
