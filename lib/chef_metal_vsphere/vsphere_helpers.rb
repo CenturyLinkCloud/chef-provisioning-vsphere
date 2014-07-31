@@ -4,8 +4,12 @@ module ChefMetalVsphere
   module Helpers
 
     def vim(options = connect_options)
-      # reconnect on every call - connections may silently timeout during long operations (e.g. cloning)
-      RbVmomi::VIM.connect options
+      if @current_connection.nil? or @current_connection.serviceContent.sessionManager.currentSession.nil?
+        puts "reestablishing connection"
+        @current_connection = RbVmomi::VIM.connect options
+      end
+
+      @current_connection
     end
 
     def find_vm(dc_name, vm_folder, vm_name)
@@ -425,6 +429,31 @@ module ChefMetalVsphere
       spec = csi.spec
       raise "Customization Spec not found [#{customization_spec}]" if spec.nil?
       spec
+    end
+
+    def upload_file_to_vm(vm, username, password, local, remote, conn)
+      auth = RbVmomi::VIM::NamePasswordAuthentication({:username => username, :password => password, :interactiveSession => false})
+      size = File.size(local)
+      endpoint = conn.serviceContent.guestOperationsManager.fileManager.InitiateFileTransferToGuest(
+        :vm => vm, 
+        :auth => auth, 
+        :guestFilePath => remote,
+        :overwrite => true,
+        :fileAttributes => RbVmomi::VIM::GuestWindowsFileAttributes.new,
+        :fileSize => size)
+
+        puts "got endpoint: #{endpoint}"
+        puts "Content-Length is #{size}"
+        uri = URI.parse(endpoint)
+        http = Net::HTTP.new(uri.host, uri.port)
+        http.use_ssl = true
+        http.verify_mode = OpenSSL::SSL::VERIFY_NONE
+        puts "path: #{uri.path}"
+        req = Net::HTTP::Put.new("#{uri.path}?#{uri.query}")
+        req.body_stream = File.open(local)
+        req["Content-Type"] = "application/octet-stream"
+        req["Content-Length"] = size
+        res=http.request(req) 
     end
   end
 end
