@@ -212,6 +212,7 @@ module ChefMetalVsphere
 
         until (Time.now.utc - now) > machine_options[:ready_timeout] || (vm.guest.net.map { |net| net.ipAddress}.flatten).include?(vm_ip) do
           action_handler.report_progress "IP addresses on #{machine_spec.name} are #{vm.guest.net.map { |net| net.ipAddress}.flatten}"
+          vm_ip = ip_for(bootstrap_options, vm) if vm_ip.nil?
           sleep 5
         end
         if !(vm.guest.net.map { |net| net.ipAddress}.flatten).include?(vm_ip)
