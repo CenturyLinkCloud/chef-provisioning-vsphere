@@ -21,7 +21,7 @@ Gem::Specification.new do |s|
 
   s.add_dependency 'chef'
   s.add_dependency 'rbvmomi', '~> 1.5.1'
-  s.add_dependency 'chef-metal', '0.13'
+  s.add_dependency 'clc-fork-chef-metal', '0.13.alpha.1'
   s.add_dependency 'rubyzip', '1.1.6'
 
   s.add_development_dependency 'rspec'
