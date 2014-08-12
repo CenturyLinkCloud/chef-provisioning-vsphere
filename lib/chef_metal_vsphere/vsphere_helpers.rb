@@ -295,8 +295,9 @@ module ChefMetalVsphere
             end
             cust_domain = cust_options[:domain]
             if cust_ip_settings.nil?
-              action_handler.report_progress "customizing #{vm_name} with dynamic IP"
               cust_ip_settings= RbVmomi::VIM::CustomizationIPSettings.new(:ip => RbVmomi::VIM::CustomizationDhcpIpGenerator.new())
+              cust_ip_settings.dnsServerList = cust_options[:ipsettings][:dnsServerList]
+              action_handler.report_progress "customizing #{vm_name} with dynamic IP and DNS: #{cust_options[:ipsettings][:dnsServerList]}"
             end
 
             cust_ip_settings.dnsDomain = cust_domain
