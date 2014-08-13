@@ -152,7 +152,7 @@ module ChefMetalVsphere
 
       vm = find_vm(dc_name, options[:vm_folder], vm_name)
 
-      unless options[:additional_disk_size_gb].nil?
+      if options[:additional_disk_size_gb].to_i > 0
         task = vm.ReconfigVM_Task(:spec => RbVmomi::VIM.VirtualMachineConfigSpec(:deviceChange => [virtual_disk_for(vm, options)]))
         task.wait_for_completion
       end
