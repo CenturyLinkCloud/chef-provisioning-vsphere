@@ -343,7 +343,7 @@ module ChefMetalVsphere
       if cust_options.has_key?(:domain) and cust_options[:domain] != 'local'
         cust_domain_password = RbVmomi::VIM::CustomizationPassword(
           :plainText => true,
-          :value => cust_options[:domainAdminPassword])
+          :value => ENV['domainAdminPassword'] || cust_options[:domainAdminPassword])
         cust_id = RbVmomi::VIM::CustomizationIdentification.new(
           :joinDomain => cust_options[:domain],
           :domainAdmin => cust_options[:domainAdmin],
