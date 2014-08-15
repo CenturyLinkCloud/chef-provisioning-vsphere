@@ -3,10 +3,24 @@ require 'rbvmomi'
 module ChefMetalVsphere
   module Helpers
 
+    if !$guest_op_managers
+      $guest_op_managers = {}
+    end
+
     def vim(options = connect_options)
       if @current_connection.nil? or @current_connection.serviceContent.sessionManager.currentSession.nil?
         puts "establishing connection to #{options[:host]}"
         @current_connection = RbVmomi::VIM.connect options
+        str_conn = @current_connection.pretty_inspect # a string in the format of VIM(host ip)
+        
+        # we are caching guest operation managers in a global variable...terrible i know
+        # this object is available from the serviceContent object on API version 5 forward
+        # Its a singleton and if another connection is made for the same host and user
+        # that object is not available on any subsequent connection
+        # I could find no documentation that discusses this
+        if !$guest_op_managers.has_key?(str_conn)
+          $guest_op_managers[str_conn] = @current_connection.serviceContent.guestOperationsManager
+        end
       end
 
       @current_connection
@@ -348,6 +362,7 @@ module ChefMetalVsphere
           :joinDomain => cust_options[:domain],
           :domainAdmin => cust_options[:domainAdmin],
           :domainAdminPassword => cust_domain_password)
+        #puts "my env passwd is: #{ENV['domainAdminPassword']}"
         action_handler.report_progress "joining domain #{cust_options[:domain]} with user: #{cust_options[:domainAdmin]}"
       else
         cust_id = RbVmomi::VIM::CustomizationIdentification.new(
@@ -435,7 +450,7 @@ module ChefMetalVsphere
     def upload_file_to_vm(vm, username, password, local, remote)
       auth = RbVmomi::VIM::NamePasswordAuthentication({:username => username, :password => password, :interactiveSession => false})
       size = File.size(local)
-      endpoint = vim.serviceContent.guestOperationsManager.fileManager.InitiateFileTransferToGuest(
+      endpoint = $guest_op_managers[vim.pretty_inspect].fileManager.InitiateFileTransferToGuest(
         :vm => vm, 
         :auth => auth, 
         :guestFilePath => remote,
