@@ -108,6 +108,12 @@ describe "vsphere_driver" do
 			disk_count = @vm.disks.count
 			expect(@vm.disks[disk_count-1].capacityInKB).to eq(@metal_config[:machine_options][:bootstrap_options][:additional_disk_size_gb] * 1024 * 1024)
 		end
+		it "has hot add cpu enabled" do
+			expect(@vm.config.cpuHotAddEnabled).to eq(true)
+		end
+		it "has hot add memory enabled" do
+			expect(@vm.config.memoryHotAddEnabled).to eq(true)
+		end		
 		it "has the correct IP address" do
 	      if @vm.guest.toolsRunningStatus != "guestToolsRunning"
 	      	now = Time.now.utc
@@ -116,7 +122,7 @@ describe "vsphere_driver" do
 	          sleep 5
 	        end
 	      end
-			expect(@vm.guest.net[1].ipAddress[1]).to eq(@metal_config[:machine_options][:bootstrap_options][:customization_spec][:ipsettings][:ip])
+			expect(@vm.guest.net.map { |net| net.ipAddress}.flatten).to include(@metal_config[:machine_options][:bootstrap_options][:customization_spec][:ipsettings][:ip])
 		end
     end
 

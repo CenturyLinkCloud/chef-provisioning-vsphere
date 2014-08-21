@@ -136,7 +136,10 @@ module ChefMetalVsphere
         location: relocate_spec_for(dc_name, vm_template, options),
         powerOn: false,
         template: false,
-        config: RbVmomi::VIM.VirtualMachineConfigSpec(:deviceChange => Array.new)
+        config: RbVmomi::VIM.VirtualMachineConfigSpec(
+          :cpuHotAddEnabled => true,
+          :memoryHotAddEnabled => true,
+          :deviceChange => Array.new)
       )
 
       clone_spec.customization = customization_options_from(action_handler, vm_template, vm_name, options)
