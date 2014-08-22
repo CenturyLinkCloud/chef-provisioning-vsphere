@@ -139,6 +139,7 @@ module ChefMetalVsphere
         config: RbVmomi::VIM.VirtualMachineConfigSpec(
           :cpuHotAddEnabled => true,
           :memoryHotAddEnabled => true,
+          :cpuHotRemoveEnabled => true,
           :deviceChange => Array.new)
       )
 

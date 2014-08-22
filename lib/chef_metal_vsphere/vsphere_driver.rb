@@ -345,7 +345,6 @@ module ChefMetalVsphere
               machine.execute_always("if ! cat #{interfaces_file} | grep -q dns-search ; then echo 'dns-search #{machine_spec.name}' >> #{interfaces_file} ; fi")
               machine.execute_always("if ! cat #{interfaces_file} | grep -q dns-nameservers ; then echo 'dns-nameservers #{nameservers}' >> #{interfaces_file} ; fi")
               machine.execute_always('/etc/init.d/networking restart')
-              machine.execute_always('echo "ACTION=="add", SUBSYSTEM=="cpu", ATTR{online}="1"" > /etc/udev/rules.d/99-vmware-cpuhotplug-udev.rules')
               machine.execute_always('apt-get -qq update')
             end
           end

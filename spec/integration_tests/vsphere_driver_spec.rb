@@ -111,6 +111,9 @@ describe "vsphere_driver" do
 		it "has hot add cpu enabled" do
 			expect(@vm.config.cpuHotAddEnabled).to eq(true)
 		end
+		it "has hot remove cpu enabled" do
+			expect(@vm.config.cpuHotRemoveEnabled).to eq(true)
+		end
 		it "has hot add memory enabled" do
 			expect(@vm.config.memoryHotAddEnabled).to eq(true)
 		end		
