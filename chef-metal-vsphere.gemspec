@@ -20,7 +20,7 @@ Gem::Specification.new do |s|
   s.files = %w(Rakefile README.md) + Dir.glob("{distro,lib,tasks,spec}/**/*", File::FNM_DOTMATCH).reject {|f| File.directory?(f) }
 
   s.add_dependency 'chef'
-  s.add_dependency 'rbvmomi', '~> 1.5.1'
+  s.add_dependency 'rbvmomi', '~> 1.8.0', '>= 1.8.2'
   s.add_dependency 'chef-metal', '~> 0.14.2'
   s.add_dependency 'rubyzip', '1.1.6'
 
