@@ -1,3 +1,3 @@
 module ChefMetalVsphere
-  VERSION = '0.3.57'
+  VERSION = '0.3.58'
 end

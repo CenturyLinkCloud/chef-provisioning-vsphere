@@ -1,3 +1,4 @@
+require 'json'
 require 'kitchen'
 require 'chef_metal_vsphere/vsphere_driver'
 require 'chef_metal/chef_machine_spec'
@@ -35,6 +36,18 @@ module Kitchen
           state[:hostname] = machine_spec.location['ipaddress']
           state[:vsphere_name] = config[:server_name]
         end
+
+        node_file = File.join(instance.busser[:test_base_path], "nodes/#{instance.suite.name}.json")
+        node = {
+          :id => instance.suite.name,
+          :automatic => {
+            :ipaddress => state[:hostname]
+          }
+        }
+        File.open(node_file, 'w') do |out|
+          out << JSON.pretty_generate(node)
+        end
+
       end
 
       def destroy(state)
@@ -49,6 +62,8 @@ module Kitchen
         state.delete(:server_id)
         state.delete(:hostname)
         state.delete(:vsphere_name)
+
+        File.delete(File.join(instance.busser[:test_base_path], "nodes/#{instance.suite.name}.json"))
       end
 
       def with_metal_driver(name, &block)
