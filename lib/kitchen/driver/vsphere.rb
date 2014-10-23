@@ -63,7 +63,8 @@ module Kitchen
         state.delete(:hostname)
         state.delete(:vsphere_name)
 
-        File.delete(File.join(instance.busser[:test_base_path], "nodes/#{instance.suite.name}.json"))
+        node_file = File.join(instance.busser[:test_base_path], "nodes/#{instance.suite.name}.json")
+        File.delete(node_file) if File.exist?(node_file)
       end
 
       def with_metal_driver(name, &block)
