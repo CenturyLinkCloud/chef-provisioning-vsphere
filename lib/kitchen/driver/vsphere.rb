@@ -37,7 +37,9 @@ module Kitchen
           state[:vsphere_name] = config[:server_name]
         end
 
-        node_file = File.join(instance.busser[:test_base_path], "nodes/#{instance.suite.name}.json")
+        node_dir = File.join(instance.busser[:test_base_path], "nodes")
+        Dir.mkdir(node_dir) unless Dir.exist?(node_dir)
+        node_file = File.join(node_dir, "#{instance.suite.name}.json")
         node = {
           :id => instance.suite.name,
           :automatic => {
