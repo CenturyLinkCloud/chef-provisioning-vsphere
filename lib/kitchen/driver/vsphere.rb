@@ -25,7 +25,7 @@ module Kitchen
         }
 
       def create(state)
-        config[:server_name] ||= "kitchen-#{SecureRandom.hex}-#{instance.name}"
+        config[:server_name] ||= "kitchen-#{SecureRandom.hex(4)}"
         state[:username] = config[:machine_options][:bootstrap_options][:ssh][:user]
         state[:password] = config[:machine_options][:bootstrap_options][:ssh][:password]
         
