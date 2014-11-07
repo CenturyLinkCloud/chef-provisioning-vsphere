@@ -291,11 +291,7 @@ module ChefMetalVsphere
         end
       end
       strategy = convergence_strategy_for(machine_spec, machine_options)
-      begin
-        strategy.cleanup_convergence(action_handler, machine_spec)
-      rescue URI::InvalidURIError
-        raise unless Chef::Config.local_mode
-      end
+      strategy.cleanup_convergence(action_handler, machine_spec)
     end
 
     def stop_machine(action_handler, machine_spec, machine_options)
