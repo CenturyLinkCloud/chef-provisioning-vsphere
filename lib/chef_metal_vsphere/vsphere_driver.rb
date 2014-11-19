@@ -178,7 +178,8 @@ module ChefMetalVsphere
         'driver_version' => VERSION,
         'server_id' => vm.config.instanceUuid,
         'is_windows' => is_windows?(vm),
-        'allocated_at' => Time.now.utc.to_s
+        'allocated_at' => Time.now.utc.to_s,
+        'ipaddress' => vm.guest.ipAddress
       }
       machine_spec.location['key_name'] = bootstrap_options[:key_name] if bootstrap_options[:key_name]
       %w(ssh_username sudo use_private_ip_for_ssh ssh_gateway).each do |key|
