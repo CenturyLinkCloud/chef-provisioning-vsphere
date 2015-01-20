@@ -106,7 +106,7 @@ module ChefMetalVsphere
     end
 
     def dc(dc_name)
-      vim.serviceInstance.find_datacenter(dc_name) or raise("vSphere Datacenter not found [#{datacenter}]")
+      vim.serviceInstance.find_datacenter(dc_name) or raise("vSphere Datacenter not found [#{dc_name}]")
     end
 
     def network_adapter_for(operation, network_name, network_label, device_key)
