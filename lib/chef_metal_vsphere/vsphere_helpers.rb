@@ -43,7 +43,7 @@ module ChefMetalVsphere
       return true
     end
 
-    def vm_stopped?(vm)
+    def vm_stopped?(vm)self
       return true if vm.nil?
       state = vm.runtime.powerState
       return false unless state == 'poweredOff'
@@ -109,20 +109,19 @@ module ChefMetalVsphere
       vim.serviceInstance.find_datacenter(dc_name) or raise("vSphere Datacenter not found [#{dc_name}]")
     end
 
-    def network_adapter_for(operation, network_name, network_label, device_key)
-        nic_backing_info = RbVmomi::VIM::VirtualEthernetCardNetworkBackingInfo(:deviceName => network_name)
-        connectable = RbVmomi::VIM::VirtualDeviceConnectInfo(
-          :allowGuestControl => true,
-          :connected => true,
-          :startConnected => true)
-        device = RbVmomi::VIM::VirtualVmxnet3(
-          :backing => nic_backing_info,
-          :deviceInfo => RbVmomi::VIM::Description(:label => network_label, :summary => network_name),
-          :key => device_key,
-          :connectable => connectable)
-        RbVmomi::VIM::VirtualDeviceConfigSpec(
-          :operation => operation,
-          :device => device)
+    def network_adapter_for(operation, network_name, network_label, device_key, backing_info)
+      connectable = RbVmomi::VIM::VirtualDeviceConnectInfo(
+        :allowGuestControl => true,
+        :connected => true,
+        :startConnected => true)
+      device = RbVmomi::VIM::VirtualVmxnet3(
+        :backing => backing_info,
+        :deviceInfo => RbVmomi::VIM::Description(:label => network_label, :summary => network_name),
+        :key => device_key,
+        :connectable => connectable)
+      RbVmomi::VIM::VirtualDeviceConfigSpec(
+        :operation => operation,
+        :device => device)
     end
 
     def find_ethernet_cards_for(vm)
@@ -182,8 +181,8 @@ module ChefMetalVsphere
       deviceAdditions, changes = network_device_changes(action_handler, vm_template, options)
 
       if deviceAdditions.count > 0
-        current_networks = find_ethernet_cards_for(vm).map{|card| card.backing.deviceName}
-        new_devices = deviceAdditions.select { |device| !current_networks.include?(device.device.backing.deviceName)}
+        current_networks = find_ethernet_cards_for(vm).map{|card| card.backing}
+        new_devices = deviceAdditions.select { |device| !current_networks.include?(device.device.backing)}
         
         if new_devices.count > 0
           action_handler.report_progress "Adding extra NICs"
@@ -276,21 +275,36 @@ module ChefMetalVsphere
       key = 4000
       networks.each_index do | i |
         label = "Ethernet #{i+1}"
+        backing_info = backing_info_for(action_handler, dc(options[:datacenter]), networks[i])
         if card = cards.shift
           key = card.key
           operation = RbVmomi::VIM::VirtualDeviceConfigSpecOperation('edit')
           action_handler.report_progress "changing template nic for #{networks[i]}"
           changes.push(
-            network_adapter_for(operation, networks[i], label, key))
+            network_adapter_for(operation, networks[i], label, key, backing_info))
         else
           key = key + 1
           operation = RbVmomi::VIM::VirtualDeviceConfigSpecOperation('add')
           action_handler.report_progress "will be adding nic for #{networks[i]}"
           additions.push(
-            network_adapter_for(operation, networks[i], label, key))
+            network_adapter_for(operation, networks[i], label, key, backing_info))
         end
       end
       [additions, changes]
+    end
+
+    def backing_info_for(action_handler, datacenter, network_name)
+      network = datacenter.networkFolder.find(network_name)
+      action_handler.report_progress "network: #{network_name} is a #{network.class}}"
+      if network.is_a?(RbVmomi::VIM::DistributedVirtualPortgroup)
+        port = RbVmomi::VIM::DistributedVirtualSwitchPortConnection(
+          :switchUuid => network.config.distributedVirtualSwitch.uuid,
+          :portgroupKey => network.key
+        )
+        RbVmomi::VIM::VirtualEthernetCardDistributedVirtualPortBackingInfo(:port => port)
+      else
+        RbVmomi::VIM::VirtualEthernetCardNetworkBackingInfo(:deviceName => network_name)
+      end
     end
 
     def find_datastore(dc, datastore_name)
