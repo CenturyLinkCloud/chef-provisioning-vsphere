@@ -43,7 +43,7 @@ module ChefMetalVsphere
       return true
     end
 
-    def vm_stopped?(vm)self
+    def vm_stopped?(vm)
       return true if vm.nil?
       state = vm.runtime.powerState
       return false unless state == 'poweredOff'
@@ -181,8 +181,8 @@ module ChefMetalVsphere
       deviceAdditions, changes = network_device_changes(action_handler, vm_template, options)
 
       if deviceAdditions.count > 0
-        current_networks = find_ethernet_cards_for(vm).map{|card| card.backing}
-        new_devices = deviceAdditions.select { |device| !current_networks.include?(device.device.backing)}
+        current_networks = find_ethernet_cards_for(vm).map{|card| network_id_for(card.backing)}
+        new_devices = deviceAdditions.select { |device| !current_networks.include?(network_id_for(device.device.backing))}
         
         if new_devices.count > 0
           action_handler.report_progress "Adding extra NICs"
@@ -190,6 +190,14 @@ module ChefMetalVsphere
           task.wait_for_completion
           new_devices
         end
+      end
+    end
+
+    def network_id_for(backing_info)
+      if backing_info.is_a?(RbVmomi::VIM::VirtualEthernetCardDistributedVirtualPortBackingInfo)
+        backing_info.port.portgroupKey
+      else
+        backing_info.network
       end
     end
 
