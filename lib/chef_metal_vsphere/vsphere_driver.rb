@@ -339,7 +339,7 @@ module ChefMetalVsphere
               Chef::Log.info "Ubuntu version 12.04 or greater. Need to patch DNS."
               interfaces_file = "/etc/network/interfaces"
               nameservers = bootstrap_options[:customization_spec][:ipsettings][:dnsServerList].join(' ')
-              machine.execute_always("if ! cat #{interfaces_file} | grep -q dns-search ; then echo 'dns-search #{machine_spec.name}' >> #{interfaces_file} ; fi")
+              machine.execute_always("if ! cat #{interfaces_file} | grep -q dns-search ; then echo 'dns-search #{bootstrap_options[:customization_spec][:domain]}' >> #{interfaces_file} ; fi")
               machine.execute_always("if ! cat #{interfaces_file} | grep -q dns-nameservers ; then echo 'dns-nameservers #{nameservers}' >> #{interfaces_file} ; fi")
               machine.execute_always('/etc/init.d/networking restart')
               machine.execute_always('apt-get -qq update')
