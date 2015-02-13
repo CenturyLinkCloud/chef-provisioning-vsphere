@@ -286,9 +286,14 @@ module ChefMetalVsphere
       vm = vm_for(machine_spec)
       if vm
         action_handler.perform_action "Delete VM [#{vm.parent.name}/#{vm.name}]" do
-          vm.PowerOffVM_Task.wait_for_completion unless vm.runtime.powerState == 'poweredOff'
-          vm.Destroy_Task.wait_for_completion
-          machine_spec.location = nil
+          begin
+            vm.PowerOffVM_Task.wait_for_completion unless vm.runtime.powerState == 'poweredOff'
+            vm.Destroy_Task.wait_for_completion
+          rescue RbVmomi::Fault => fault
+            raise fault unless fault.fault.class.wsdl_name == "ManagedObjectNotFound"
+          ensure
+            machine_spec.location = nil
+          end
         end
       end
       strategy = convergence_strategy_for(machine_spec, machine_options)
