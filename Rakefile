@@ -9,7 +9,7 @@ module Bundler
     def rubygem_push(path)
       gem_file = File.join(
         File.dirname(__FILE__), "pkg", 
-        "chef-metal-vsphere-#{ChefMetalVsphere::VERSION}.gem"
+        "clc-chef-metal-vsphere-#{ChefMetalVsphere::VERSION}.gem"
       )
       puts "pushing #{gem_file}"
       system("gem nexus '#{gem_file}'")
