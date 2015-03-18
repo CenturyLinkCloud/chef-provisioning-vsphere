@@ -37,7 +37,7 @@ module Kitchen
           state[:vsphere_name] = config[:server_name]
         end
 
-        node_dir = File.join(instance.busser[:test_base_path], "nodes")
+        node_dir = File.join(instance.verifier[:test_base_path], "nodes")
         Dir.mkdir(node_dir) unless Dir.exist?(node_dir)
         node_file = File.join(node_dir, "#{instance.suite.name}.json")
         node = {
@@ -65,7 +65,7 @@ module Kitchen
         state.delete(:hostname)
         state.delete(:vsphere_name)
 
-        node_file = File.join(instance.busser[:test_base_path], "nodes/#{instance.suite.name}.json")
+        node_file = File.join(instance.verifier[:test_base_path], "nodes/#{instance.suite.name}.json")
         File.delete(node_file) if File.exist?(node_file)
       end
 
