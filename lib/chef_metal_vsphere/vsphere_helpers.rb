@@ -302,12 +302,16 @@ module ChefMetalVsphere
     end
 
     def backing_info_for(action_handler, datacenter, network_name)
-      network = datacenter.networkFolder.find(network_name)
-      action_handler.report_progress "network: #{network_name} is a #{network.class}}"
-      if network.is_a?(RbVmomi::VIM::DistributedVirtualPortgroup)
+      networks = datacenter.network.select {|net| net.name == network_name}
+      if networks.count > 0
+        dpg = networks.select { |net| net.is_a?(RbVmomi::VIM::DistributedVirtualPortgroup) }
+        networks = dpg unless dpg.empty?
+      end
+      action_handler.report_progress "network: #{network_name} is a #{networks[0].class}}"
+      if networks[0].is_a?(RbVmomi::VIM::DistributedVirtualPortgroup)
         port = RbVmomi::VIM::DistributedVirtualSwitchPortConnection(
-          :switchUuid => network.config.distributedVirtualSwitch.uuid,
-          :portgroupKey => network.key
+          :switchUuid => networks[0].config.distributedVirtualSwitch.uuid,
+          :portgroupKey => networks[0].key
         )
         RbVmomi::VIM::VirtualEthernetCardDistributedVirtualPortBackingInfo(:port => port)
       else
