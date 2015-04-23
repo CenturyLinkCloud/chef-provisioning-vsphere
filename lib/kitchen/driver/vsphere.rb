@@ -73,7 +73,7 @@ module Kitchen
         Cheffish.honor_local_mode do
           chef_server = Cheffish.default_chef_server(Cheffish.profiled_config)
           config[:machine_options][:convergence_options] = {:chef_server => chef_server}
-          machine_spec = ChefMetal::ChefMachineSpec.new({'name' => name}, chef_server)
+          machine_spec = Chef::Provisioning.chef_managed_entry_store(chef_server).get(:machine, name)
           driver = ChefMetal.driver_for_url("vsphere://#{config[:driver_options][:host]}", config)
           action_handler = ChefMetal::ActionHandler.new
           block.call(action_handler, driver, machine_spec)

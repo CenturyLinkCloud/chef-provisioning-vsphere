@@ -20,8 +20,7 @@ Gem::Specification.new do |s|
   s.files = %w(Rakefile README.md) + Dir.glob("{distro,lib,tasks}/**/*", File::FNM_DOTMATCH).reject {|f| File.directory?(f) }
 
   s.add_dependency 'rbvmomi', '~> 1.8.0', '>= 1.8.2'
-  s.add_dependency 'clc-fork-chef-metal', '0.14.alpha.10'
-  s.add_dependency 'rubyzip', '~> 1.1.0', '>= 1.1.7'
+  s.add_dependency 'chef-provisioning', '~>1.1.1'
 
   s.add_development_dependency 'rspec'
   s.add_development_dependency 'rake'

@@ -1,8 +1,8 @@
 require 'chef'
-require 'chef_metal/driver'
 require 'cheffish/merged_config'
-require 'chef_metal/machine/windows_machine'
-require 'chef_metal/machine/unix_machine'
+require 'chef/provisioning/driver'
+require 'chef/provisioning/machine/windows_machine'
+require 'chef/provisioning/machine/unix_machine'
 require 'chef_metal_vsphere/version'
 require 'chef_metal_vsphere/vsphere_helpers'
 require 'chef_metal_vsphere/vsphere_url'
@@ -450,9 +450,9 @@ module ChefMetalVsphere
     end
 
     def convergence_strategy_for(machine_spec, machine_options)
-      require 'chef_metal/convergence_strategy/install_msi'
-      require 'chef_metal/convergence_strategy/install_cached'
-      require 'chef_metal/convergence_strategy/no_converge'
+      require 'chef/provisioning/convergence_strategy/install_msi'
+      require 'chef/provisioning/convergence_strategy/install_cached'
+      require 'chef/provisioning/convergence_strategy/no_converge'
       # Defaults
       if !machine_spec.location
         return ChefMetal::ConvergenceStrategy::NoConverge.new(machine_options[:convergence_options], config)
@@ -490,7 +490,7 @@ module ChefMetalVsphere
     end
 
     def create_winrm_transport(machine_spec, machine_options, vm)
-      require 'chef_metal/transport/winrm'
+      require 'chef/provisioning/transport/winrm'
       bootstrap_options = bootstrap_options_for(machine_spec, machine_options)
       ssh_options = bootstrap_options[:ssh]
       remote_host = machine_spec.location['ipaddress'] || ip_for(bootstrap_options, vm)
@@ -506,7 +506,7 @@ module ChefMetalVsphere
     end
 
     def create_ssh_transport(machine_spec, machine_options, vm)
-      require 'chef_metal/transport/ssh'
+      require 'chef/provisioning/transport/ssh'
       bootstrap_options = bootstrap_options_for(machine_spec, machine_options)
       ssh_options = bootstrap_options[:ssh]
       ssh_user = ssh_options[:user]
