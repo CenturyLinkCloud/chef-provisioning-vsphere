@@ -1,4 +1,4 @@
-require_relative '../../lib/chef_metal_vsphere/vsphere_url.rb'
+require_relative '../../lib/chef/provisioning/vsphere_driver/vsphere_url.rb'
 
 describe 'VsphereUrl' do
 	expected_host='1.1.1.1'

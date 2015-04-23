@@ -1,4 +1,4 @@
-require 'chef_metal_vsphere/vsphere_driver'
+require 'chef/provisioning/vsphere_driver'
 
 describe "canonicalize_url" do
 
@@ -26,7 +26,7 @@ describe "canonicalize_url" do
 		}
 
 		let(:results) {
-			ChefMetalVsphere::VsphereDriver.canonicalize_url('vsphere://3.3.3.3:999/crazyapi?use_ssl=false&insecure=true', metal_config)
+			ChefProvisioningVsphere::VsphereDriver.canonicalize_url('vsphere://3.3.3.3:999/crazyapi?use_ssl=false&insecure=true', metal_config)
 		}
 
 		it "populates the config with correct host from the driver url" do
@@ -63,7 +63,7 @@ describe "canonicalize_url" do
 		 }
 
 		let(:results) {
-			ChefMetalVsphere::VsphereDriver.canonicalize_url('vsphere://3.3.3.3:999/crazyapi?use_ssl=false&insecure=true', metal_config)
+			ChefProvisioningVsphere::VsphereDriver.canonicalize_url('vsphere://3.3.3.3:999/crazyapi?use_ssl=false&insecure=true', metal_config)
 		}
 
 		it "will symbolize user" do
@@ -109,7 +109,7 @@ describe "canonicalize_url" do
 		}
 
 		let(:results) {
-			ChefMetalVsphere::VsphereDriver.canonicalize_url(nil, metal_config)
+			ChefProvisioningVsphere::VsphereDriver.canonicalize_url(nil, metal_config)
 		}
 
 		it "creates the correct driver url from config settings" do
@@ -142,7 +142,7 @@ describe "canonicalize_url" do
 		}
 
 		let(:results) {
-			ChefMetalVsphere::VsphereDriver.canonicalize_url(nil, metal_config)
+			ChefProvisioningVsphere::VsphereDriver.canonicalize_url(nil, metal_config)
 		}
 
 		it "creates the correct driver url from default settings" do
@@ -174,7 +174,7 @@ describe "canonicalize_url" do
 		}
 
 		it "should raise an error" do
-			expect{ChefMetalVsphere::VsphereDriver.canonicalize_url(nil,metal_config)}.to raise_error(RuntimeError)
+			expect{ChefProvisioningVsphere::VsphereDriver.canonicalize_url(nil,metal_config)}.to raise_error(RuntimeError)
 		end
 	end
 
@@ -187,7 +187,7 @@ describe "canonicalize_url" do
 		}
 
 		it "should raise an error" do
-			expect{ChefMetalVsphere::VsphereDriver.canonicalize_url(nil,metal_config)}.to raise_error(RuntimeError)
+			expect{ChefProvisioningVsphere::VsphereDriver.canonicalize_url(nil,metal_config)}.to raise_error(RuntimeError)
 		end
 	end
 
@@ -200,7 +200,7 @@ describe "canonicalize_url" do
 		}
 
 		it "should raise an error" do
-			expect{ChefMetalVsphere::VsphereDriver.canonicalize_url(nil,metal_config)}.to raise_error(RuntimeError)
+			expect{ChefProvisioningVsphere::VsphereDriver.canonicalize_url(nil,metal_config)}.to raise_error(RuntimeError)
 		end
 	end	
 end

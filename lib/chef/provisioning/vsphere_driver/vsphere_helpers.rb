@@ -1,6 +1,6 @@
 require 'rbvmomi'
 
-module ChefMetalVsphere
+module ChefProvisioningVsphere
   module Helpers
 
     if !$guest_op_managers

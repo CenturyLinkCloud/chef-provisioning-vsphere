@@ -1,7 +1,7 @@
 require 'json'
 require 'kitchen'
-require 'chef_metal_vsphere/vsphere_driver'
-require 'chef_metal/chef_machine_spec'
+require 'chef/provisioning/vsphere_driver'
+require 'chef/provisioning/chef_machine_spec'
 
 module Kitchen
   module Driver
@@ -29,7 +29,7 @@ module Kitchen
         state[:username] = config[:machine_options][:bootstrap_options][:ssh][:user]
         state[:password] = config[:machine_options][:bootstrap_options][:ssh][:password]
         
-        machine = with_metal_driver(config[:server_name]) do | action_handler, driver, machine_spec|
+        machine = with_provisioning_driver(config[:server_name]) do | action_handler, driver, machine_spec|
           driver.allocate_machine(action_handler, machine_spec, config[:machine_options])
           driver.ready_machine(action_handler, machine_spec, config[:machine_options])
           state[:server_id] = machine_spec.location['server_id']
@@ -55,7 +55,7 @@ module Kitchen
       def destroy(state)
         return if state[:server_id].nil?
 
-        with_metal_driver(state[:vsphere_name]) do | action_handler, driver, machine_spec|
+        with_provisioning_driver(state[:vsphere_name]) do | action_handler, driver, machine_spec|
           machine_spec.location = { 'driver_url' => driver.driver_url,
                         'server_id' => state[:server_id]}
           driver.destroy_machine(action_handler, machine_spec, config[:machine_options])
@@ -69,13 +69,13 @@ module Kitchen
         File.delete(node_file) if File.exist?(node_file)
       end
 
-      def with_metal_driver(name, &block)
+      def with_provisioning_driver(name, &block)
         Cheffish.honor_local_mode do
-          chef_server = Cheffish.default_chef_server(Cheffish.profiled_config)
+          chef_server = Cheffish.default_chef_server
           config[:machine_options][:convergence_options] = {:chef_server => chef_server}
-          machine_spec = Chef::Provisioning.chef_managed_entry_store(chef_server).get(:machine, name)
-          driver = ChefMetal.driver_for_url("vsphere://#{config[:driver_options][:host]}", config)
-          action_handler = ChefMetal::ActionHandler.new
+          machine_spec = Chef::Provisioning.chef_managed_entry_store(chef_server).new_entry(:machine, name)
+          driver = Chef::Provisioning.driver_for_url("vsphere://#{config[:driver_options][:host]}", config)
+          action_handler = Chef::Provisioning::ActionHandler.new
           block.call(action_handler, driver, machine_spec)
         end
       end

@@ -2,7 +2,7 @@ require 'bundler/gem_tasks'
 require 'rspec/core/rake_task'
 
 $:.unshift(File.dirname(__FILE__) + '/lib')
-require 'chef_metal_vsphere/version'
+require 'chef/provisioning/vsphere_driver/version'
 
 RSpec::Core::RakeTask.new(:unit) do |task|
   task.pattern = 'spec/unit_tests/*_spec.rb'

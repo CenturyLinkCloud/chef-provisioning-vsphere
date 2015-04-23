@@ -1,4 +1,4 @@
-require 'chef_metal_vsphere/vsphere_driver'
+require 'chef/provisioning/vsphere_driver'
 require 'chef/provisioning/machine_spec'
 
 	# A file named config.rb in the same directory as this spec file 
@@ -34,18 +34,16 @@ require 'chef/provisioning/machine_spec'
 	# }
 
 describe "vsphere_driver" do
-    include ChefMetalVsphere::Helpers
+    include ChefProvisioningVsphere::Helpers
 
 	before :all do
 		@vm_name = "cmvd-test-#{SecureRandom.hex}"
 		@metal_config = eval File.read(File.expand_path('../config.rb', __FILE__))
 		Cheffish.honor_local_mode do
 			chef_server = Cheffish.default_chef_server
-			puts "chef server:#{chef_server}"
 			@machine_spec = Chef::Provisioning.chef_managed_entry_store(chef_server).new_entry(:machine, @vm_name)
-			puts "spec: #{@machine_spec}"
-			@driver = ChefMetal.driver_for_url("vsphere://#{@metal_config[:driver_options][:host]}", @metal_config)
-			action_handler = ChefMetal::ActionHandler.new
+			@driver = Chef::Provisioning.driver_for_url("vsphere://#{@metal_config[:driver_options][:host]}", @metal_config)
+			action_handler = Chef::Provisioning::ActionHandler.new
 			@driver.allocate_machine(action_handler, @machine_spec, @metal_config[:machine_options])
 			@metal_config[:machine_options][:convergence_options] = {:chef_server => chef_server}
 			machine = @driver.ready_machine(action_handler, @machine_spec, @metal_config[:machine_options])
@@ -135,8 +133,8 @@ describe "vsphere_driver" do
 		it "removes the machine" do
 			Cheffish.honor_local_mode do
 				chef_server = Cheffish.default_chef_server
-				driver = ChefMetal.driver_for_url("vsphere://#{@metal_config[:driver_options][:host]}", @metal_config)
-				action_handler = ChefMetal::ActionHandler.new
+				driver = Chef::Provisioning.driver_for_url("vsphere://#{@metal_config[:driver_options][:host]}", @metal_config)
+				action_handler = Chef::Provisioning::ActionHandler.new
 				machine_spec = Chef::Provisioning.chef_managed_entry_store(chef_server).new_entry(:machine, @vm_name)
 				machine_spec.location = { 'driver_url' => driver.driver_url,
 										  'server_id' => @server_id}

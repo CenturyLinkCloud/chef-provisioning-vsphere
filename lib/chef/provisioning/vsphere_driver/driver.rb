@@ -3,15 +3,15 @@ require 'cheffish/merged_config'
 require 'chef/provisioning/driver'
 require 'chef/provisioning/machine/windows_machine'
 require 'chef/provisioning/machine/unix_machine'
-require 'chef_metal_vsphere/version'
-require 'chef_metal_vsphere/vsphere_helpers'
-require 'chef_metal_vsphere/vsphere_url'
+require 'chef/provisioning/vsphere_driver/version'
+require 'chef/provisioning/vsphere_driver/vsphere_helpers'
+require 'chef/provisioning/vsphere_driver/vsphere_url'
 
-module ChefMetalVsphere
+module ChefProvisioningVsphere
   # Provisions machines in vSphere.
-  class VsphereDriver < ChefMetal::Driver
+  class VsphereDriver < Chef::Provisioning::Driver
     include Chef::Mixin::ShellOut
-    include ChefMetalVsphere::Helpers
+    include ChefProvisioningVsphere::Helpers
 
     def self.from_url(driver_url, config)
       VsphereDriver.new(driver_url, config)
@@ -438,9 +438,9 @@ module ChefMetalVsphere
       end
 
       if machine_spec.location['is_windows']
-        ChefMetal::Machine::WindowsMachine.new(machine_spec, transport_for(machine_spec, machine_options, vm), convergence_strategy_for(machine_spec, machine_options))
+        Chef::Provisioning::Machine::WindowsMachine.new(machine_spec, transport_for(machine_spec, machine_options, vm), convergence_strategy_for(machine_spec, machine_options))
       else
-        ChefMetal::Machine::UnixMachine.new(machine_spec, transport_for(machine_spec, machine_options, vm), convergence_strategy_for(machine_spec, machine_options))
+        Chef::Provisioning::Machine::UnixMachine.new(machine_spec, transport_for(machine_spec, machine_options, vm), convergence_strategy_for(machine_spec, machine_options))
       end
     end
 
@@ -455,13 +455,13 @@ module ChefMetalVsphere
       require 'chef/provisioning/convergence_strategy/no_converge'
       # Defaults
       if !machine_spec.location
-        return ChefMetal::ConvergenceStrategy::NoConverge.new(machine_options[:convergence_options], config)
+        return Chef::Provisioning::ConvergenceStrategy::NoConverge.new(machine_options[:convergence_options], config)
       end
 
       if machine_spec.location['is_windows']
-        ChefMetal::ConvergenceStrategy::InstallMsi.new(machine_options[:convergence_options], config)
+        Chef::Provisioning::ConvergenceStrategy::InstallMsi.new(machine_options[:convergence_options], config)
       else
-        ChefMetal::ConvergenceStrategy::InstallCached.new(machine_options[:convergence_options], config)
+        Chef::Provisioning::ConvergenceStrategy::InstallCached.new(machine_options[:convergence_options], config)
       end
     end
 
@@ -502,7 +502,7 @@ module ChefMetalVsphere
         winrm_options[:basic_auth_only] = true
       end
 
-      ChefMetal::Transport::WinRM.new("http://#{remote_host}:5985/wsman", :plaintext, winrm_options, config)
+      Chef::Provisioning::Transport::WinRM.new("http://#{remote_host}:5985/wsman", :plaintext, winrm_options, config)
     end
 
     def create_ssh_transport(machine_spec, machine_options, vm)
@@ -512,7 +512,7 @@ module ChefMetalVsphere
       ssh_user = ssh_options[:user]
       remote_host = machine_spec.location['ipaddress'] || ip_for(bootstrap_options, vm)
 
-      ChefMetal::Transport::SSH.new(remote_host, ssh_user, ssh_options, {}, config)
+      Chef::Provisioning::Transport::SSH.new(remote_host, ssh_user, ssh_options, {}, config)
     end
 
     def ip_for(bootstrap_options, vm)
