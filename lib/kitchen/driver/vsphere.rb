@@ -1,7 +1,7 @@
 require 'json'
 require 'kitchen'
 require 'chef/provisioning/vsphere_driver'
-require 'chef/provisioning/chef_machine_spec'
+require 'chef/provisioning/machine_spec'
 
 module Kitchen
   module Driver
