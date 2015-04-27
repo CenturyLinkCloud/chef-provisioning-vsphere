@@ -2,7 +2,7 @@ $:.unshift(File.dirname(__FILE__) + '/lib')
 require 'chef/provisioning/vsphere_driver/version'
 
 Gem::Specification.new do |s|
-  s.name = 'clc-chef-provisioning-vsphere'
+  s.name = 'chef-provisioning-vsphere'
   s.version = ChefProvisioningVsphere::VERSION
   s.platform = Gem::Platform::RUBY
   s.extra_rdoc_files = ['README.md']
