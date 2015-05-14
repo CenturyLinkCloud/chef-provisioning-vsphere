@@ -17,62 +17,6 @@ module ChefProvisioningVsphere
       VsphereDriver.new(driver_url, config)
     end
 
-    def self.canonicalize_url(driver_url, config)
-      config = symbolize_keys(config)
-      new_defaults = {
-       :driver_options => { :connect_options => { :port     => 443,
-                                                  :use_ssl      => true,
-                                                  :insecure => false,
-                                                  :path     => '/sdk'
-        } },
-                       :machine_options => { :start_timeout => 600, 
-                                             :create_timeout => 600, 
-                                             :ready_timeout => 300,
-                                             :bootstrap_options => { :ssh => { :port => 22,
-                                                                               :user => 'root' },
-                                                                     :key_name => 'metal_default',
-                                                                     :tags => {} } }
-      }
-
-      new_connect_options = {}
-      new_connect_options[:provider] = 'vsphere'
-      if !driver_url.nil?
-        uri = URI(driver_url)
-        new_connect_options[:host] = uri.host
-        new_connect_options[:port] = uri.port
-        if uri.path && uri.path.length > 0
-          new_connect_options[:path] = uri.path
-        end
-        new_connect_options[:use_ssl] = uri.use_ssl
-        new_connect_options[:insecure] = uri.insecure
-      end
-      new_connect_options = new_connect_options.merge(config[:driver_options])
-
-      new_config = { :driver_options => { :connect_options => new_connect_options }}
-      config = Cheffish::MergedConfig.new(new_config, config, new_defaults)
-
-      required_options = [:host, :user, :password]
-      missing_options = []
-      required_options.each do |opt|
-        missing_options << opt unless config[:driver_options][:connect_options].has_key?(opt)
-      end
-      unless missing_options.empty?
-        raise "missing required options: #{missing_options.join(', ')}"
-      end
-
-      url = URI::VsphereUrl.from_config(config[:driver_options][:connect_options]).to_s
-      [ url, config ]
-    end
-
-    def self.symbolize_keys(h)
-      Hash === h ?
-        Hash[
-          h.map do |k, v|
-            [k.respond_to?(:to_sym) ? k.to_sym : k, symbolize_keys(v)]
-          end
-        ] : h
-    end
-
     # Create a new Vsphere provisioner.
     #
     # ## Parameters
@@ -84,11 +28,44 @@ module ChefProvisioningVsphere
     #   :insecure   - optional - true to ignore ssl certificate validation errors in connection to vSphere API server (default: false)
     #   :user       - required - user name to use in connection to vSphere API server
     #   :password   - required - password to use in connection to vSphere API server
-    #   :proxy_host         - optional - http proxy host to use in connection to vSphere API server (default: none)
-    #   :proxy_port         - optional - http proxy port to use in connection to vSphere API server (default: none)
+    def self.canonicalize_url(driver_url, config)
+      config = symbolize_keys(config)
+      driver_options = config[:driver_options]
+      [ driver_url || URI::VsphereUrl.from_config(driver_options).to_s, config ]
+    end
+
+    def self.symbolize_keys(h)
+      Hash === h ?
+        Hash[
+          h.map do |k, v|
+            [k.respond_to?(:to_sym) ? k.to_sym : k, symbolize_keys(v)]
+          end
+        ] : h
+    end
+
     def initialize(driver_url, config)
       super(driver_url, config)
-      @connect_options = config[:driver_options][:connect_options].to_hash
+
+      uri = URI(driver_url)
+      @connect_options = { 
+        provider: 'vsphere',
+        host: uri.host,
+        port: uri.port,
+        use_ssl: uri.use_ssl,
+        insecure: uri.insecure,
+        path: uri.path,
+        user: config[:driver_options][:user],
+        password: config[:driver_options][:password],
+      }
+
+      required_options = [:user, :password]
+      missing_options = []
+      required_options.each do |opt|
+        missing_options << opt if @connect_options[opt].nil?
+      end
+      unless missing_options.empty?
+        raise "missing required options: #{missing_options.join(', ')}"
+      end
     end
 
     attr_reader :connect_options
@@ -153,14 +130,6 @@ module ChefProvisioningVsphere
       bootstrap_options = bootstrap_options_for(machine_spec, machine_options)
       vm = nil
 
-      if bootstrap_options[:ssh]
-        wait_on_port = bootstrap_options[:ssh][:port]
-        raise "Must specify bootstrap_options[:ssh][:port]" if wait_on_port.nil?
-      else
-        raise 'bootstrapping is currently supported for ssh only'
-        # wait_on_port = bootstrap_options['winrm']['port']
-      end
-
       description = [ "creating machine #{machine_spec.name} on #{driver_url}" ]
       bootstrap_options.each_pair { |key,value| description << "  #{key}: #{value.inspect}" }
       action_handler.report_progress description
@@ -208,10 +177,11 @@ module ChefProvisioningVsphere
       end
 
       if transport.nil? || !transport.available? || !(vm.guest.net.map { |net| net.ipAddress}.flatten).include?(vm_ip)
-        action_handler.report_progress "waiting up to #{machine_options[:ready_timeout]} seconds for customizations to complete and find #{vm_ip}"
+        ready_timeout = machine_options[:ready_timeout] || 300
+        action_handler.report_progress "waiting up to #{ready_timeout} seconds for customizations to complete and find #{vm_ip}"
         now = Time.now.utc
 
-        until (Time.now.utc - now) > machine_options[:ready_timeout] || (vm.guest.net.map { |net| net.ipAddress}.flatten).include?(vm_ip) do
+        until (Time.now.utc - now) > ready_timeout || (vm.guest.net.map { |net| net.ipAddress}.flatten).include?(vm_ip) do
           action_handler.report_progress "IP addresses on #{machine_spec.name} are #{vm.guest.net.map { |net| net.ipAddress}.flatten}"
           vm_ip = ip_for(bootstrap_options, vm) if vm_ip.nil?
           sleep 5
@@ -368,9 +338,11 @@ module ChefProvisioningVsphere
 
     def remaining_wait_time(machine_spec, machine_options)
       if machine_spec.location['started_at']
-        machine_options[:start_timeout] - (Time.now.utc - Time.parse(machine_spec.location['started_at']))
+        (machine_options[:start_timeout] || 600) -
+          (Time.now.utc - Time.parse(machine_spec.location['started_at']))
       else
-        machine_options[:create_timeout] - (Time.now.utc - Time.parse(machine_spec.location['allocated_at']))
+        (machine_options[:create_timeout] || 600) - 
+         (Time.now.utc - Time.parse(machine_spec.location['allocated_at']))
       end
     end
 
@@ -501,7 +473,6 @@ module ChefProvisioningVsphere
       else
         winrm_options[:basic_auth_only] = true
       end
-
       Chef::Provisioning::Transport::WinRM.new("http://#{remote_host}:5985/wsman", :plaintext, winrm_options, config)
     end
 

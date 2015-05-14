@@ -27,7 +27,13 @@ describe 'VsphereUrl' do
 	end
 
 	context "when setting from a hash" do
-		let(:url) {URI::VsphereUrl.from_config({:host => '2.2.2.2', :port => 2345, :path => "/hoooo", :use_ssl => false, :insecure => true})}
+		let(:url) { URI::VsphereUrl.from_config({
+			:host => '2.2.2.2',
+			:port => 2345,
+			:path => "/hoooo",
+			:use_ssl => false,
+			:insecure => true
+		}) }
 
 		it "asigns the correct url" do
 			expect(url.to_s).to eq('vsphere://2.2.2.2:2345/hoooo?use_ssl=false&insecure=true')

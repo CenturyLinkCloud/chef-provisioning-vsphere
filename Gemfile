@@ -2,4 +2,4 @@
 source "https://rubygems.org"
 gemspec
 
-gem "chef", "~> 12.1"
+gem "chef", "~> 12.3"
