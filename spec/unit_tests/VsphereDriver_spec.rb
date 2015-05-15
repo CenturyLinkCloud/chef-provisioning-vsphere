@@ -82,36 +82,6 @@ describe ChefProvisioningVsphere::VsphereDriver do
     end
   end
 
-  context "when missing user" do
-    let(:metal_config) do
-      {
-        :driver_options => { 
-          :host => 'host',
-          :password => '<password>'
-        }
-      }
-    end
-
-    it "should raise an error" do
-      expect{ subject }.to raise_error(RuntimeError)
-    end
-  end
-
-  context "when missing password" do
-    let(:metal_config) do
-      {
-        :driver_options => { 
-          :user => 'user',
-          :host => 'host'
-        }
-      }
-    end
-
-    it "should raise an error" do
-      expect{ subject }.to raise_error(RuntimeError)
-    end
-  end
-
   describe 'canonicalize_url' do
     context "when no url is in the config" do
       let(:metal_config) do
