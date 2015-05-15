@@ -118,30 +118,38 @@ module ChefProvisioningVsphere
     #
     def allocate_machine(action_handler, machine_spec, machine_options)
       if machine_spec.location
-        Chef::Log.warn "Checking to see if #{machine_spec.location} has been created..."
+        Chef::Log.warn(
+          "Checking to see if #{machine_spec.location} has been created...")
         vm = vm_for(machine_spec)
         if vm
-          Chef::Log.warn "returning existing machine"
+          Chef::Log.warn 'returning existing machine'
           return vm
         else
-          Chef::Log.warn "Machine #{machine_spec.name} (#{machine_spec.location['server_id']} on #{driver_url}) no longer exists.  Recreating ..."
+          Chef::Log.warn machine_msg(
+            machine_spec.name,
+            machine_spec.location['server_id'],
+            'no longer exists.  Recreating ...'
+          )
         end
       end
-      bootstrap_options = bootstrap_options_for(machine_spec, machine_options)
-      vm = nil
+      bootstrap_options = machine_options[:bootstrap_options]
 
-      description = [ "creating machine #{machine_spec.name} on #{driver_url}" ]
-      bootstrap_options.each_pair { |key,value| description << "  #{key}: #{value.inspect}" }
-      action_handler.report_progress description
+      action_handler.report_progress full_description(
+        machine_spec, bootstrap_options)
+      
+      vm = find_or_create_vm(bootstrap_options, machine_spec, action_handler)
 
-      vm = find_vm(bootstrap_options[:datacenter], bootstrap_options[:vm_folder], machine_spec.name)
-      server_id = nil
-      if vm
-        Chef::Log.info "machine already created: #{bootstrap_options[:vm_folder]}/#{machine_spec.name}"
-      else
-        vm = clone_vm(action_handler, bootstrap_options)
-      end
+      add_machine_spec_location(vm, machine_spec)
 
+      action_handler.performed_action(machine_msg(
+        machine_spec.name,
+        vm.config.instanceUuid,
+        'created'
+      ))
+      vm
+    end
+
+    def add_machine_spec_location(vm, machine_spec)
       machine_spec.location = {
         'driver_url' => driver_url,
         'driver_version' => VERSION,
@@ -150,101 +158,196 @@ module ChefProvisioningVsphere
         'allocated_at' => Time.now.utc.to_s,
         'ipaddress' => vm.guest.ipAddress
       }
-      machine_spec.location['key_name'] = bootstrap_options[:key_name] if bootstrap_options[:key_name]
-      %w(ssh_username sudo use_private_ip_for_ssh ssh_gateway).each do |key|
-        machine_spec.location[key] = machine_options[key.to_sym] if machine_options[key.to_sym]
-      end
+    end
 
-      action_handler.performed_action "machine #{machine_spec.name} created as #{machine_spec.location['server_id']} on #{driver_url}"
+    def find_or_create_vm(bootstrap_options, machine_spec, action_handler)
+      vm = find_vm(
+        bootstrap_options[:datacenter],
+        bootstrap_options[:vm_folder],
+        machine_spec.name
+      )
+      server_id = nil
+      if vm
+        Chef::Log.info machine_msg(
+          machine_spec.name,
+          vm.config.instanceUuid,
+          'already created'
+        )
+      else
+        vm = clone_vm(action_handler, bootstrap_options, machine_spec.name)
+      end
       vm
+    end
+
+    def full_description(machine_spec, bootstrap_options)
+      description = [ "creating machine #{machine_spec.name} on #{driver_url}" ]
+      bootstrap_options.to_hash.each_pair do |key,value|
+        description << "  #{key}: #{value.inspect}"
+      end
+      description
+    end
+
+    def machine_msg(name, id, action)
+      "Machine - #{action} - #{name} (#{id} on #{driver_url})"
     end
 
     def ready_machine(action_handler, machine_spec, machine_options)
       start_machine(action_handler, machine_spec, machine_options)
       vm = vm_for(machine_spec)
       if vm.nil?
-        raise "Machine #{machine_spec.name} does not have a server associated with it, or server does not exist."
+        raise "Machine #{machine_spec.name} does not have a server "\
+        'associated with it, or server does not exist.'
       end
 
-      wait_until_ready(action_handler, machine_spec, machine_options, vm)
+      bootstrap_options = machine_options[:bootstrap_options]
 
-      bootstrap_options = bootstrap_options_for(machine_spec, machine_options)
+      transport_respond?(
+        machine_options,
+        vm,
+        action_handler,
+        machine_spec
+      )
 
-      transport = nil
-      vm_ip = ip_for(bootstrap_options, vm)
-      if !vm_ip.nil?
-        transport = transport_for(machine_spec, machine_options, vm)
-      end
-
-      if transport.nil? || !transport.available? || !(vm.guest.net.map { |net| net.ipAddress}.flatten).include?(vm_ip)
-        ready_timeout = machine_options[:ready_timeout] || 300
-        action_handler.report_progress "waiting up to #{ready_timeout} seconds for customizations to complete and find #{vm_ip}"
-        now = Time.now.utc
-
-        until (Time.now.utc - now) > ready_timeout || (vm.guest.net.map { |net| net.ipAddress}.flatten).include?(vm_ip) do
-          action_handler.report_progress "IP addresses on #{machine_spec.name} are #{vm.guest.net.map { |net| net.ipAddress}.flatten}"
-          vm_ip = ip_for(bootstrap_options, vm) if vm_ip.nil?
-          sleep 5
-        end
-        if !(vm.guest.net.map { |net| net.ipAddress}.flatten).include?(vm_ip)
-          action_handler.report_progress "rebooting..."
-          if vm.guest.toolsRunningStatus != "guestToolsRunning"
-            action_handler.report_progress "tools have stopped. current power state is #{vm.runtime.powerState} and tools state is #{vm.guest.toolsRunningStatus}. powering up server..."
-            start_vm(vm)
-          else
-            restart_server(action_handler, machine_spec, vm)
-          end
-          now = Time.now.utc
-          until (Time.now.utc - now) > 90 || (vm.guest.net.map { |net| net.ipAddress}.flatten).include?(vm_ip) do
-            vm_ip = ip_for(bootstrap_options, vm) if vm_ip.nil?
-            print "-"
-            sleep 5
-          end
-        end
-        machine_spec.location['ipaddress'] = vm.guest.ipAddress
-        action_handler.report_progress "IP address obtained: #{machine_spec.location['ipaddress']}"
-      end
-
-      domain = bootstrap_options[:customization_spec][:domain]
-      if vm.config.guestId.start_with?('win') && domain != 'local'
-        now = Time.now.utc
-        trimmed_name = machine_spec.name.byteslice(0,15)
-        expected_name="#{trimmed_name}.#{domain}"
-        action_handler.report_progress "waiting to domain join and be named #{expected_name}"
-        until (Time.now.utc - now) > 30 || (vm.guest.hostName == expected_name) do
-          print "."
-          sleep 5
-        end
-      end
-
-      begin
-        wait_for_transport(action_handler, machine_spec, machine_options, vm)
-      rescue Timeout::Error
-        # Only ever reboot once, and only if it's been less than 10 minutes since we stopped waiting
-        if machine_spec.location['started_at'] || remaining_wait_time(machine_spec, machine_options) < -(10*60)
-          raise
-        else
-          Chef::Log.warn "Machine #{machine_spec.name} (#{server.config.instanceUuid} on #{driver_url}) was started but SSH did not come up.  Rebooting machine in an attempt to unstick it ..."
-          restart_server(action_handler, machine_spec, vm)
-          wait_until_ready(action_handler, machine_spec, machine_options, vm)
-          wait_for_transport(action_handler, machine_spec, machine_options, vm)
-        end
-      end
-
-      machine = machine_for(machine_spec, machine_options, vm)
-
-      new_nics = add_extra_nic(action_handler, vm_template_for(bootstrap_options), bootstrap_options, vm)
-      if is_windows?(vm) && !new_nics.nil?
-        new_nics.each do |nic|
-          machine.execute_always("Disable-Netadapter -Name '#{nic.device.deviceInfo.label}' -Confirm:$false")
-        end
-      end
+      machine = machine_for(machine_spec,machine_options)
+      setup_extra_nics(action_handler, bootstrap_options, vm, machine)
 
       if has_static_ip(bootstrap_options) && !is_windows?(vm)
         setup_ubuntu_dns(machine, bootstrap_options, machine_spec)
       end
 
       machine
+    end
+
+    def setup_extra_nics(action_handler, bootstrap_options, vm, machine)
+      new_nics = add_extra_nic(
+        action_handler,
+        vm_template_for(bootstrap_options),
+        bootstrap_options,
+        vm
+      )
+      if is_windows?(vm) && !new_nics.nil?
+        new_nics.each do |nic|
+          nic_label = nic.device.deviceInfo.label
+          machine.execute_always(
+            "Disable-Netadapter -Name '#{nic_label}' -Confirm:$false")
+        end
+      end
+    end
+
+    def transport_respond?(
+      machine_options,
+      vm,
+      action_handler,
+      machine_spec
+    )
+      bootstrap_options = machine_options[:bootstrap_options]
+
+      # this waits for vmware tools to start and the vm to presebnt an ip
+      # This may just be the ip of a newly cloned machine
+      # Customization below may change this to a valid ip
+      wait_until_ready(action_handler, machine_spec, machine_options, vm)
+      
+      # find the ip we actually want
+      # this will be the static ip to assign
+      # or the ip reported back by the vm if using dhcp
+      # it *may* be nil if just cloned
+      vm_ip = ip_to_bootstrap(bootstrap_options, vm)
+      transport = nil
+      unless vm_ip.nil?
+        transport = transport_for(machine_spec, bootstrap_options[:ssh], vm_ip)
+      end
+
+      unless !transport.nil? && transport.available? && has_ip?(vm_ip, vm)
+        attempt_ip(machine_options, action_handler, vm, machine_spec)
+      end
+      machine_spec.location['ipaddress'] = vm.guest.ipAddress
+      action_handler.report_progress(
+        "IP address obtained: #{machine_spec.location['ipaddress']}")
+
+      wait_for_domain(bootstrap_options, vm, machine_spec, action_handler)
+
+      begin
+        wait_for_transport(action_handler, machine_spec, machine_options, vm)
+      rescue Timeout::Error
+        # Only ever reboot once, and only if it's been less than 10 minutes
+        # since we stopped waiting
+        if machine_spec.location['started_at'] ||
+          remaining_wait_time(machine_spec, machine_options) < -(10*60)
+          raise
+        else
+          Chef::Log.warn(machine_msg(
+            machine_spec.name,
+            vm.config.instanceUuid,
+            'started but SSH did not come up.  Rebooting...'
+          ))
+          restart_server(action_handler, machine_spec, vm)
+          wait_until_ready(action_handler, machine_spec, machine_options, vm)
+          wait_for_transport(action_handler, machine_spec, machine_options, vm)
+        end
+      end
+    end
+
+    def attempt_ip(machine_options, action_handler, vm, machine_spec)
+      vm_ip = ip_to_bootstrap(machine_options[:bootstrap_options], vm)
+      
+      wait_for_ip(vm, machine_options, action_handler)
+
+      unless has_ip?(vm_ip, vm)
+        action_handler.report_progress "rebooting..."
+        if vm.guest.toolsRunningStatus != "guestToolsRunning"
+          msg = 'tools have stopped. current power state is '
+          msg << vm.runtime.powerState
+          msg << ' and tools state is '
+          msg << vm.guest.toolsRunningStatus
+          msg << '. powering up server...'
+          action_handler.report_progress(msg.join)
+          start_vm(vm)
+        else
+          restart_server(action_handler, machine_spec, vm)
+        end
+        wait_for_ip(vm, machine_options, action_handler)
+      end
+    end
+
+    def wait_for_domain(bootstrap_options, vm, machine_spec, action_handler)
+      domain = bootstrap_options[:customization_spec][:domain]
+      if is_windows?(vm) && domain != 'local'
+        start = Time.now.utc
+        trimmed_name = machine_spec.name.byteslice(0,15)
+        expected_name="#{trimmed_name}.#{domain}"
+        action_handler.report_progress(
+          "waiting to domain join and be named #{expected_name}")
+        until (Time.now.utc - start) > 30 ||
+          (vm.guest.hostName == expected_name) do
+          print '.'
+          sleep 5
+        end
+      end
+    end
+
+    def wait_for_ip(vm, machine_options, action_handler)
+      bootstrap_options = machine_options[:bootstrap_options]
+      vm_ip = ip_to_bootstrap(bootstrap_options, vm)
+      ready_timeout = machine_options[:ready_timeout] || 300
+      msg = "waiting up to #{ready_timeout} seconds for customization"
+      msg << " and find #{vm_ip}" unless vm_ip ==  vm.guest.ipAddress
+      action_handler.report_progress msg
+
+      start = Time.now.utc
+      until (Time.now.utc - start) > ready_timeout || has_ip?(vm_ip, vm) do
+        action_handler.report_progress(
+          "IP addresses found: #{all_ips_for(vm)}")
+        vm_ip ||= ip_to_bootstrap(bootstrap_options, vm)
+        sleep 5
+      end
+    end
+
+    def all_ips_for(vm)
+      vm.guest.net.map { |net| net.ipAddress}.flatten
+    end
+
+    def has_ip?(ip, vm)
+      all_ips_for(vm).include?(ip)
     end
 
     # Connect to machine without acquiring it
@@ -283,8 +386,7 @@ module ChefProvisioningVsphere
       vm = vm_for(machine_spec)
       if vm
         action_handler.perform_action "Power on VM [#{vm.parent.name}/#{vm.name}]" do
-          bootstrap_options = bootstrap_options_for(machine_spec, machine_options)
-          start_vm(vm, bootstrap_options[:ssh][:port])
+          start_vm(vm, machine_options[:bootstrap_options][:ssh][:port])
         end
       end
     end
@@ -300,27 +402,27 @@ module ChefProvisioningVsphere
     protected
 
     def setup_ubuntu_dns(machine, bootstrap_options, machine_spec)
-        host_lookup = machine.execute_always('host google.com')
-        if host_lookup.exitstatus != 0
-          if host_lookup.stdout.include?("setlocale: LC_ALL")
-            machine.execute_always('locale-gen en_US && update-locale LANG=en_US')
-          end
-          distro = machine.execute_always("lsb_release -i | sed -e 's/Distributor ID://g'").stdout.strip
-          Chef::Log.info "Found distro:#{distro}"
-          if distro == 'Ubuntu'
-            distro_version = (machine.execute_always("lsb_release -r | sed -e s/[^0-9.]//g")).stdout.strip.to_f
-            Chef::Log.info "Found distro version:#{distro_version}"
-            if distro_version>= 12.04
-              Chef::Log.info "Ubuntu version 12.04 or greater. Need to patch DNS."
-              interfaces_file = "/etc/network/interfaces"
-              nameservers = bootstrap_options[:customization_spec][:ipsettings][:dnsServerList].join(' ')
-              machine.execute_always("if ! cat #{interfaces_file} | grep -q dns-search ; then echo 'dns-search #{bootstrap_options[:customization_spec][:domain]}' >> #{interfaces_file} ; fi")
-              machine.execute_always("if ! cat #{interfaces_file} | grep -q dns-nameservers ; then echo 'dns-nameservers #{nameservers}' >> #{interfaces_file} ; fi")
-              machine.execute_always('/etc/init.d/networking restart')
-              machine.execute_always('apt-get -qq update')
-            end
+      host_lookup = machine.execute_always('host google.com')
+      if host_lookup.exitstatus != 0
+        if host_lookup.stdout.include?("setlocale: LC_ALL")
+          machine.execute_always('locale-gen en_US && update-locale LANG=en_US')
+        end
+        distro = machine.execute_always("lsb_release -i | sed -e 's/Distributor ID://g'").stdout.strip
+        Chef::Log.info "Found distro:#{distro}"
+        if distro == 'Ubuntu'
+          distro_version = (machine.execute_always("lsb_release -r | sed -e s/[^0-9.]//g")).stdout.strip.to_f
+          Chef::Log.info "Found distro version:#{distro_version}"
+          if distro_version>= 12.04
+            Chef::Log.info "Ubuntu version 12.04 or greater. Need to patch DNS."
+            interfaces_file = "/etc/network/interfaces"
+            nameservers = bootstrap_options[:customization_spec][:ipsettings][:dnsServerList].join(' ')
+            machine.execute_always("if ! cat #{interfaces_file} | grep -q dns-search ; then echo 'dns-search #{bootstrap_options[:customization_spec][:domain]}' >> #{interfaces_file} ; fi")
+            machine.execute_always("if ! cat #{interfaces_file} | grep -q dns-nameservers ; then echo 'dns-nameservers #{nameservers}' >> #{interfaces_file} ; fi")
+            machine.execute_always('/etc/init.d/networking restart')
+            machine.execute_always('apt-get -qq update')
           end
         end
+      end
     end
 
     def has_static_ip(bootstrap_options)
@@ -348,10 +450,10 @@ module ChefProvisioningVsphere
 
     def wait_until_ready(action_handler, machine_spec, machine_options, vm)
       if vm.guest.toolsRunningStatus != "guestToolsRunning"
-        perform_action = true
         if action_handler.should_perform_actions
           action_handler.report_progress "waiting for #{machine_spec.name} (#{vm.config.instanceUuid} on #{driver_url}) to be ready ..."
-          until remaining_wait_time(machine_spec, machine_options) < 0 || (vm.guest.toolsRunningStatus == "guestToolsRunning" && (vm.guest.ipAddress.nil? || vm.guest.ipAddress.length > 0)) do
+          until remaining_wait_time(machine_spec, machine_options) < 0 ||
+            (vm.guest.toolsRunningStatus == "guestToolsRunning" && !vm.guest.ipAddress.nil? && vm.guest.ipAddress.length > 0) do
             print "."
             sleep 5
           end
@@ -368,32 +470,21 @@ module ChefProvisioningVsphere
       end
     end
 
-    def bootstrap_options_for(machine_spec, machine_options)
-      bootstrap_options = machine_options[:bootstrap_options] || {}
-      bootstrap_options = bootstrap_options.to_hash
-      tags = {
-          'Name' => machine_spec.name,
-          'BootstrapId' => machine_spec.id,
-          'BootstrapHost' => Socket.gethostname,
-          'BootstrapUser' => Etc.getlogin
-      }
-      # User-defined tags override the ones we set
-      tags.merge!(bootstrap_options[:tags]) if bootstrap_options[:tags]
-      bootstrap_options.merge!({ :tags => tags })
-      bootstrap_options[:name] ||= machine_spec.name
-      bootstrap_options
-    end
+    def clone_vm(action_handler, bootstrap_options, machine_name)
+      datacenter = bootstrap_options[:datacenter]
 
-    def clone_vm(action_handler, bootstrap_options)
-      vm_name         = bootstrap_options[:name]
-      datacenter      = bootstrap_options[:datacenter]
-
-      vm = find_vm(datacenter, bootstrap_options[:vm_folder], vm_name)
+      vm = find_vm(datacenter, bootstrap_options[:vm_folder], machine_name)
       return vm if vm
 
       vm_template = vm_template_for(bootstrap_options)
 
-      do_vm_clone(action_handler, datacenter, vm_template, vm_name, bootstrap_options)
+      do_vm_clone(
+        action_handler,
+        datacenter,
+        vm_template,
+        machine_name,
+        bootstrap_options
+      )
     end
 
     def vm_template_for(bootstrap_options)
@@ -403,16 +494,23 @@ module ChefProvisioningVsphere
       find_vm(datacenter, template_folder, template_name) or raise("vSphere VM Template not found [#{template_folder}/#{template_name}]")
     end
 
-    def machine_for(machine_spec, machine_options, vm = nil)
-      vm ||= vm_for(machine_spec)
-      if !vm
+    def machine_for(machine_spec, machine_options)
+      if machine_spec.location.nil?
         raise "Server for node #{machine_spec.name} has not been created!"
       end
 
+      transport = transport_for(
+        machine_spec, 
+        machine_options[:bootstrap_options][:ssh]
+      )
+      strategy = convergence_strategy_for(machine_spec, machine_options)
+      
       if machine_spec.location['is_windows']
-        Chef::Provisioning::Machine::WindowsMachine.new(machine_spec, transport_for(machine_spec, machine_options, vm), convergence_strategy_for(machine_spec, machine_options))
+        Chef::Provisioning::Machine::WindowsMachine.new(
+          machine_spec, transport, strategy)
       else
-        Chef::Provisioning::Machine::UnixMachine.new(machine_spec, transport_for(machine_spec, machine_options, vm), convergence_strategy_for(machine_spec, machine_options))
+        Chef::Provisioning::Machine::UnixMachine.new(
+          machine_spec, transport, strategy)
       end
     end
 
@@ -438,7 +536,10 @@ module ChefProvisioningVsphere
     end
 
     def wait_for_transport(action_handler, machine_spec, machine_options, vm)
-      transport = transport_for(machine_spec, machine_options, vm)
+      transport = transport_for(
+        machine_spec,
+        machine_options[:bootstrap_options][:ssh]
+      )
       if !transport.available?
         if action_handler.should_perform_actions
           action_handler.report_progress "waiting for #{machine_spec.name} (#{vm.config.instanceUuid} on #{driver_url}) to be connectable (transport up and running) ..."
@@ -453,40 +554,49 @@ module ChefProvisioningVsphere
       end
     end
 
-    def transport_for(machine_spec, machine_options, vm)
-      if is_windows?(vm)
-        create_winrm_transport(machine_spec, machine_options, vm)
+    def transport_for(
+      machine_spec, 
+      remoting_options, 
+      ip = machine_spec.location['ipaddress']
+    )
+      if machine_spec.location['is_windows']
+        create_winrm_transport(ip, remoting_options)
       else
-        create_ssh_transport(machine_spec, machine_options, vm)
+        create_ssh_transport(ip, remoting_options)
       end
     end
 
-    def create_winrm_transport(machine_spec, machine_options, vm)
+    def create_winrm_transport(host, options)
       require 'chef/provisioning/transport/winrm'
-      bootstrap_options = bootstrap_options_for(machine_spec, machine_options)
-      ssh_options = bootstrap_options[:ssh]
-      remote_host = machine_spec.location['ipaddress'] || ip_for(bootstrap_options, vm)
+      opt = options[:user].include?("\\") ? :disable_sspi : :basic_auth_only
+      winrm_options = {
+        user: "#{options[:user]}",
+        pass: options[:password],
+        opt => true
+      }
 
-      winrm_options = {:user => "#{ssh_options[:user]}", :pass => ssh_options[:password]}
-      if ssh_options[:user].include?("\\")
-        winrm_options[:disable_sspi] = true
-      else
-        winrm_options[:basic_auth_only] = true
-      end
-      Chef::Provisioning::Transport::WinRM.new("http://#{remote_host}:5985/wsman", :plaintext, winrm_options, config)
+      Chef::Provisioning::Transport::WinRM.new(
+        "http://#{host}:5985/wsman",
+        :plaintext,
+        winrm_options,
+        config
+      )
     end
 
-    def create_ssh_transport(machine_spec, machine_options, vm)
+    def create_ssh_transport(host, options)
       require 'chef/provisioning/transport/ssh'
-      bootstrap_options = bootstrap_options_for(machine_spec, machine_options)
-      ssh_options = bootstrap_options[:ssh]
-      ssh_user = ssh_options[:user]
-      remote_host = machine_spec.location['ipaddress'] || ip_for(bootstrap_options, vm)
-
-      Chef::Provisioning::Transport::SSH.new(remote_host, ssh_user, ssh_options, {}, config)
+      ssh_user = options[:user]
+      puts "creating ssh transport on #{host} with #{ssh_user} and options #{options}"
+      Chef::Provisioning::Transport::SSH.new(
+        host,
+        ssh_user,
+        options,
+        {},
+        config
+      )
     end
 
-    def ip_for(bootstrap_options, vm)
+    def ip_to_bootstrap(bootstrap_options, vm)
       if has_static_ip(bootstrap_options)
         bootstrap_options[:customization_spec][:ipsettings][:ip]
       else
