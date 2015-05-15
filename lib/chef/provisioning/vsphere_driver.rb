@@ -5,10 +5,9 @@ class Chef
   module DSL
     module Recipe
       def with_vsphere_driver(driver_options, &block)
-        options = { driver_options: driver_options }
         url = ChefProvisioningVsphere::VsphereDriver.canonicalize_url(
-          nil, options)[0]
-        with_driver url, options, &block
+          nil, driver_options)[0]
+        with_driver url, driver_options, &block
       end
     end
   end
