@@ -11,7 +11,7 @@ Gem::Specification.new do |s|
   s.authors = ['CenturyLink Cloud']
   s.email = 'matt.wrock@CenturyLinkCloud.com'
   s.homepage = 'https://github.com/tier3/chef-provisioning-vsphere'
-  s.license = 'Apache 2.0'
+  s.license = 'MIT'
 
   s.bindir       = 'bin'
   s.executables  = %w( )
