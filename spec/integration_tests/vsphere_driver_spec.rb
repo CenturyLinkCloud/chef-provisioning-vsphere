@@ -118,13 +118,11 @@ describe "vsphere_driver" do
       expect(@vm.config.memoryHotAddEnabled).to eq(true)
     end   
     it "has the correct IP address" do
-        if @vm.guest.toolsRunningStatus != "guestToolsRunning"
-          now = Time.now.utc
-          until (Time.now.utc - now) > 30 || (@vm.guest.toolsRunningStatus == "guestToolsRunning" && @vm.guest.net.count == 2 && @vm.guest.net[1].ipAddress[1] == @metal_config[:machine_options][:bootstrap_options][:customization_spec][:ipsettings][:ip]) do
-            print "."
-            sleep 5
-          end
-        end
+      now = Time.now.utc
+      until (Time.now.utc - now) > 30 || (@vm.guest.toolsRunningStatus == "guestToolsRunning" && @vm.guest.net.count == 2 && @vm.guest.net[1].ipAddress[1] == @metal_config[:machine_options][:bootstrap_options][:customization_spec][:ipsettings][:ip]) do
+        print "."
+        sleep 5
+      end
       expect(@vm.guest.net.map { |net| net.ipAddress}.flatten).to include(@metal_config[:machine_options][:bootstrap_options][:customization_spec][:ipsettings][:ip])
     end
   end
