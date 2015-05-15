@@ -53,18 +53,12 @@ module ChefProvisioningVsphere
         port: uri.port,
         use_ssl: uri.use_ssl,
         insecure: uri.insecure,
-        path: uri.path,
-        user: config[:driver_options][:user],
-        password: config[:driver_options][:password],
+        path: uri.path
       }
 
-      required_options = [:user, :password]
-      missing_options = []
-      required_options.each do |opt|
-        missing_options << opt if @connect_options[opt].nil?
-      end
-      unless missing_options.empty?
-        raise "missing required options: #{missing_options.join(', ')}"
+      if driver_options
+        @connect_options[:user] = driver_options[:user]
+        @connect_options[:password] = driver_options[:password]
       end
     end
 
@@ -310,6 +304,9 @@ module ChefProvisioningVsphere
     end
 
     def wait_for_domain(bootstrap_options, vm, machine_spec, action_handler)
+      return unless bootstrap_options[:customization_spec]
+      return unless bootstrap_options[:customization_spec][:domain]
+      
       domain = bootstrap_options[:customization_spec][:domain]
       if is_windows?(vm) && domain != 'local'
         start = Time.now.utc
