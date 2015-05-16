@@ -30,8 +30,7 @@ module ChefProvisioningVsphere
     #   :password   - required - password to use in connection to vSphere API server
     def self.canonicalize_url(driver_url, config)
       config = symbolize_keys(config)
-      driver_options = config[:driver_options]
-      [ driver_url || URI::VsphereUrl.from_config(driver_options).to_s, config ]
+      [ driver_url || URI::VsphereUrl.from_config(config).to_s, config ]
     end
 
     def self.symbolize_keys(h)
@@ -306,7 +305,7 @@ module ChefProvisioningVsphere
     def wait_for_domain(bootstrap_options, vm, machine_spec, action_handler)
       return unless bootstrap_options[:customization_spec]
       return unless bootstrap_options[:customization_spec][:domain]
-      
+
       domain = bootstrap_options[:customization_spec][:domain]
       if is_windows?(vm) && domain != 'local'
         start = Time.now.utc
@@ -583,7 +582,6 @@ module ChefProvisioningVsphere
     def create_ssh_transport(host, options)
       require 'chef/provisioning/transport/ssh'
       ssh_user = options[:user]
-      puts "creating ssh transport on #{host} with #{ssh_user} and options #{options}"
       Chef::Provisioning::Transport::SSH.new(
         host,
         ssh_user,
