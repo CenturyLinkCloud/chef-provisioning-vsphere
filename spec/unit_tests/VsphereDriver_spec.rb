@@ -86,30 +86,13 @@ describe ChefProvisioningVsphere::VsphereDriver do
     context "when no url is in the config" do
       let(:metal_config) do
         {
-          :driver_options => { 
-            :user => 'vmapi',
-            :password => '<password>',
-            :host => '4.4.4.4',
-            :port => 888,
-            :path => '/yoda',
-            :use_ssl => false,
-            :insecure => true
-          },
-          :machine_options => { 
-            :ssh => {
-              :password => '<password>',
-              :paranoid => false
-            },
-            :bootstrap_options => {
-              :datacenter => 'QA1',
-              :template_name => 'UBUNTU-12-64-TEMPLATE',
-              :vm_folder => 'DLAB',
-              :num_cpus => 2,
-              :memory_mb => 4096,
-              :resource_pool => 'CLSTR02/DLAB'
-            }
-          },
-          :log_level => :debug
+          :user => 'vmapi',
+          :password => '<password>',
+          :host => '4.4.4.4',
+          :port => 888,
+          :path => '/yoda',
+          :use_ssl => false,
+          :insecure => true
         }
       end
 
@@ -128,26 +111,9 @@ describe ChefProvisioningVsphere::VsphereDriver do
     context "when no url is in the config and config is missing defaulted values" do
       let(:metal_config) do
         {
-          :driver_options => { 
-            :user => 'vmapi',
-            :password => '<password>',
-            :host => '4.4.4.4'
-          },
-          :machine_options => { 
-            :bootstrap_options => {
-              :datacenter => 'QA1',
-              :template_name => 'UBUNTU-12-64-TEMPLATE',
-              :vm_folder => 'DLAB',
-              :num_cpus => 2,
-              :memory_mb => 4096,
-              :resource_pool => 'CLSTR02/DLAB',
-              :ssh => {
-                :password => '<password>',
-                :paranoid => false
-              }
-            }
-          },
-          :log_level => :debug
+          :user => 'vmapi',
+          :password => '<password>',
+          :host => '4.4.4.4'
         }
       end
 
