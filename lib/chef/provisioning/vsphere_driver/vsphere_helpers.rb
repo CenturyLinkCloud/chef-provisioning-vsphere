@@ -116,7 +116,7 @@ module ChefProvisioningVsphere
         :startConnected => true)
       device = RbVmomi::VIM::VirtualVmxnet3(
         :backing => backing_info,
-        :deviceInfo => RbVmomi::VIM::Description(:label => network_label, :summary => network_name),
+        :deviceInfo => RbVmomi::VIM::Description(:label => network_label, :summary => network_name.split('/').last),
         :key => device_key,
         :connectable => connectable)
       RbVmomi::VIM::VirtualDeviceConfigSpec(
@@ -302,20 +302,22 @@ module ChefProvisioningVsphere
     end
 
     def backing_info_for(action_handler, datacenter, network_name)
-      networks = datacenter.network.select {|net| net.name == network_name}
-      if networks.count > 0
-        dpg = networks.select { |net| net.is_a?(RbVmomi::VIM::DistributedVirtualPortgroup) }
-        networks = dpg unless dpg.empty?
-      end
-      action_handler.report_progress "network: #{network_name} is a #{networks[0].class}}"
-      if networks[0].is_a?(RbVmomi::VIM::DistributedVirtualPortgroup)
+      network = find_network(
+        datacenter.networkFolder,
+        network_name
+      )
+      action_handler.report_progress(
+        "network: #{network_name} is a #{network.class}")
+      if network.is_a?(RbVmomi::VIM::DistributedVirtualPortgroup)
         port = RbVmomi::VIM::DistributedVirtualSwitchPortConnection(
-          :switchUuid => networks[0].config.distributedVirtualSwitch.uuid,
-          :portgroupKey => networks[0].key
+          :switchUuid => network.config.distributedVirtualSwitch.uuid,
+          :portgroupKey => network.key
         )
-        RbVmomi::VIM::VirtualEthernetCardDistributedVirtualPortBackingInfo(:port => port)
+        RbVmomi::VIM::VirtualEthernetCardDistributedVirtualPortBackingInfo(
+          :port => port)
       else
-        RbVmomi::VIM::VirtualEthernetCardNetworkBackingInfo(:deviceName => network_name)
+        RbVmomi::VIM::VirtualEthernetCardNetworkBackingInfo(
+          deviceName: network_name.split('/').last)
       end
     end
 
@@ -467,6 +469,24 @@ module ChefProvisioningVsphere
 
       baseEntity = baseEntity.resourcePool if not baseEntity.is_a?(RbVmomi::VIM::ResourcePool) and baseEntity.respond_to?(:resourcePool)
       baseEntity
+    end
+
+    def find_network(network_folder, name)
+      base = network_folder
+      entity_array = name.split('/').reject(&:empty?)
+      entity_array.each do |item|
+        case base
+        when RbVmomi::VIM::Folder
+          base = base.childEntity.find { |f| f.name == item }
+        when RbVmomi::VIM::VmwareDistributedVirtualSwitch
+          idx = base.summary.portgroupName.find_index(item)
+          base = idx.nil? ? nil : base.portgroup[idx]
+        end
+      end
+
+      raise "vSphere Network not found [#{name}]" if base.nil?
+
+      base
     end
 
     def find_customization_spec(customization_spec)
