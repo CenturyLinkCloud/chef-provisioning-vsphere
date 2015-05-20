@@ -110,6 +110,8 @@ module ChefProvisioningVsphere
     #           -- vm_folder: name of the vSphere folder containing the VM
     #
     def allocate_machine(action_handler, machine_spec, machine_options)
+      merge_options! machine_options
+
       if machine_spec.location
         Chef::Log.warn(
           "Checking to see if #{machine_spec.location} has been created...")
@@ -140,6 +142,13 @@ module ChefProvisioningVsphere
         'created'
       ))
       vm
+    end
+
+    def merge_options!(machine_options)
+      @config = Cheffish::MergedConfig.new(
+        { machine_options: machine_options },
+        config
+      )
     end
 
     def add_machine_spec_location(vm, machine_spec)
@@ -188,6 +197,8 @@ module ChefProvisioningVsphere
     end
 
     def ready_machine(action_handler, machine_spec, machine_options)
+      merge_options! machine_options
+
       vm = start_machine(action_handler, machine_spec, machine_options)
       if vm.nil?
         raise "Machine #{machine_spec.name} does not have a server "\
@@ -350,10 +361,12 @@ module ChefProvisioningVsphere
 
     # Connect to machine without acquiring it
     def connect_to_machine(machine_spec, machine_options)
+      merge_options! machine_options
       machine_for(machine_spec, machine_options)
     end
 
     def destroy_machine(action_handler, machine_spec, machine_options)
+      merge_options! machine_options
       vm = vm_for(machine_spec)
       if vm
         action_handler.perform_action "Delete VM [#{vm.parent.name}/#{vm.name}]" do
@@ -372,6 +385,7 @@ module ChefProvisioningVsphere
     end
 
     def stop_machine(action_handler, machine_spec, machine_options)
+      merge_options! machine_options
       vm = vm_for(machine_spec)
       if vm
         action_handler.perform_action "Shutdown guest OS and power off VM [#{vm.parent.name}/#{vm.name}]" do
@@ -381,6 +395,7 @@ module ChefProvisioningVsphere
     end
 
     def start_machine(action_handler, machine_spec, machine_options)
+      merge_options! machine_options
       vm = vm_for(machine_spec)
       if vm
         action_handler.perform_action "Power on VM [#{vm.parent.name}/#{vm.name}]" do
