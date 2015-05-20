@@ -26,13 +26,18 @@ module ChefProvisioningVsphere
       @current_connection
     end
 
-    def find_vm(dc_name, vm_folder, vm_name)
-      folder = find_folder(dc_name, vm_folder) or raise("vSphere Folder not found [#{vm_folder}] for vm #{vm_name}")
+    def find_vm(vm_folder, vm_name)
+      folder = find_folder(vm_folder) ||
+        raise("vSphere Folder not found [#{vm_folder}] for vm #{vm_name}")
       vm     = folder.find(vm_name, RbVmomi::VIM::VirtualMachine)
     end
 
     def find_vm_by_id(uuid, connection = vim)
-      vm = connection.searchIndex.FindByUuid({:uuid => uuid, :vmSearch => true, :instanceUuid => true})
+      vm = connection.searchIndex.FindByUuid(
+        uuid: uuid,
+        vmSearch: true,
+        instanceUuid: true
+      )
     end
 
     def vm_started?(vm, wait_on_port = 22)
@@ -92,21 +97,23 @@ module ChefProvisioningVsphere
     end
 
     #folder could be like:  /Level1/Level2/folder_name
-    def find_folder(dc_name, folder_name)
-      baseEntity = dc(dc_name).vmFolder
+    def find_folder(folder_name)
+      base = datacenter.vmFolder
       if folder_name && folder_name.length > 0
-        entityArray = folder_name.split('/')
-        entityArray.each do |entityArrItem|
-          if entityArrItem != ''
-            baseEntity = baseEntity.childEntity.grep(RbVmomi::VIM::Folder).find { |f| f.name == entityArrItem }
+        entityArray = folder_name.split('/').reject(&:empty?)
+        entityArray.each do |item|
+          base = base.childEntity.grep(RbVmomi::VIM::Folder).find do |f|
+            f.name == item
           end
         end
       end
-      baseEntity
+      base
     end
 
-    def dc(dc_name)
-      vim.serviceInstance.find_datacenter(dc_name) or raise("vSphere Datacenter not found [#{dc_name}]")
+    def datacenter
+      dc_name = config[:machine_options][:bootstrap_options][:datacenter]
+      @datacenter ||= vim.serviceInstance.find_datacenter(dc_name) ||
+        raise("vSphere Datacenter not found [#{dc_name}]")
     end
 
     def network_adapter_for(operation, network_name, network_label, device_key, backing_info)
@@ -128,11 +135,11 @@ module ChefProvisioningVsphere
       vm.config.hardware.device.select {|d| d.is_a?(RbVmomi::VIM::VirtualEthernetCard)}
     end
 
-    def do_vm_clone(action_handler, dc_name, vm_template, vm_name, options)
+    def do_vm_clone(action_handler, vm_template, vm_name, options)
       deviceAdditions = []
 
       clone_spec = RbVmomi::VIM.VirtualMachineCloneSpec(
-        location: relocate_spec_for(dc_name, vm_template, options),
+        location: relocate_spec_for(vm_template, options),
         powerOn: false,
         template: false,
         config: RbVmomi::VIM.VirtualMachineConfigSpec(
@@ -163,11 +170,11 @@ module ChefProvisioningVsphere
 
       vm_template.CloneVM_Task(
         name: vm_name,
-        folder: find_folder(dc_name, options[:vm_folder]),
+        folder: find_folder(options[:vm_folder]),
         spec: clone_spec
       ).wait_for_completion
 
-      vm = find_vm(dc_name, options[:vm_folder], vm_name)
+      vm = find_vm(options[:vm_folder], vm_name)
 
       if options[:additional_disk_size_gb].to_i > 0
         task = vm.ReconfigVM_Task(:spec => RbVmomi::VIM.VirtualMachineConfigSpec(:deviceChange => [virtual_disk_for(vm, options)]))
@@ -201,13 +208,12 @@ module ChefProvisioningVsphere
       end
     end
 
-    def relocate_spec_for(dc_name, vm_template, options)
-      datacenter = dc(dc_name)
+    def relocate_spec_for(vm_template, options)
       if options.has_key?(:host)
-        host = find_host(datacenter, options[:host])
+        host = find_host(options[:host])
         rspec = RbVmomi::VIM.VirtualMachineRelocateSpec(host: host) 
       else
-        pool = options[:resource_pool] ? find_pool(datacenter, options[:resource_pool]) : vm_template.resourcePool
+        pool = options[:resource_pool] ? find_pool(options[:resource_pool]) : vm_template.resourcePool
         rspec = RbVmomi::VIM.VirtualMachineRelocateSpec(pool: pool)
         raise 'either :host or :resource_pool must be specified when cloning from a VM Template' if pool.nil?
       end
@@ -218,7 +224,7 @@ module ChefProvisioningVsphere
       end
 
       unless options[:datastore].to_s.empty?
-        rspec.datastore = find_datastore(datacenter, options[:datastore])
+        rspec.datastore = find_datastore(options[:datastore])
       end
 
       rspec
@@ -283,7 +289,7 @@ module ChefProvisioningVsphere
       key = 4000
       networks.each_index do | i |
         label = "Ethernet #{i+1}"
-        backing_info = backing_info_for(action_handler, dc(options[:datacenter]), networks[i])
+        backing_info = backing_info_for(action_handler, networks[i])
         if card = cards.shift
           key = card.key
           operation = RbVmomi::VIM::VirtualDeviceConfigSpecOperation('edit')
@@ -301,11 +307,8 @@ module ChefProvisioningVsphere
       [additions, changes]
     end
 
-    def backing_info_for(action_handler, datacenter, network_name)
-      network = find_network(
-        datacenter.networkFolder,
-        network_name
-      )
+    def backing_info_for(action_handler, network_name)
+      network = find_network(network_name)
       action_handler.report_progress(
         "network: #{network_name} is a #{network.class}")
       if network.is_a?(RbVmomi::VIM::DistributedVirtualPortgroup)
@@ -321,8 +324,8 @@ module ChefProvisioningVsphere
       end
     end
 
-    def find_datastore(dc, datastore_name)
-        baseEntity = dc.datastore
+    def find_datastore(datastore_name)
+        baseEntity = datacenter.datastore
         baseEntity.find { |f| f.info.name == datastore_name } or raise "no such datastore #{datastore_name}"    
     end
 
@@ -425,8 +428,8 @@ module ChefProvisioningVsphere
       end
     end
 
-    def find_host(dc, host_name)
-      baseEntity = dc.hostFolder
+    def find_host(host_name)
+      baseEntity = datacenter.hostFolder
       entityArray = host_name.split('/')
       entityArray.each do |entityArrItem|
         if entityArrItem != ''
@@ -448,8 +451,8 @@ module ChefProvisioningVsphere
       baseEntity
     end
 
-    def find_pool(dc, pool_name)
-      baseEntity = dc.hostFolder
+    def find_pool(pool_name)
+      baseEntity = datacenter.hostFolder
       entityArray = pool_name.split('/')
       entityArray.each do |entityArrItem|
         if entityArrItem != ''
@@ -471,8 +474,8 @@ module ChefProvisioningVsphere
       baseEntity
     end
 
-    def find_network(network_folder, name)
-      base = network_folder
+    def find_network(name)
+      base = datacenter.networkFolder
       entity_array = name.split('/').reject(&:empty?)
       entity_array.each do |item|
         case base

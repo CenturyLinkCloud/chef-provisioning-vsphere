@@ -110,6 +110,7 @@ module ChefProvisioningVsphere
     #           -- vm_folder: name of the vSphere folder containing the VM
     #
     def allocate_machine(action_handler, machine_spec, machine_options)
+      puts "***************#{config}"
       if machine_spec.location
         Chef::Log.warn(
           "Checking to see if #{machine_spec.location} has been created...")
@@ -155,7 +156,6 @@ module ChefProvisioningVsphere
 
     def find_or_create_vm(bootstrap_options, machine_spec, action_handler)
       vm = find_vm(
-        bootstrap_options[:datacenter],
         bootstrap_options[:vm_folder],
         machine_spec.name
       )
@@ -167,7 +167,11 @@ module ChefProvisioningVsphere
           'already created'
         )
       else
-        vm = clone_vm(action_handler, bootstrap_options, machine_spec.name)
+        vm = clone_vm(
+          action_handler,
+          bootstrap_options,
+          machine_spec.name
+        )
       end
       vm
     end
@@ -185,8 +189,7 @@ module ChefProvisioningVsphere
     end
 
     def ready_machine(action_handler, machine_spec, machine_options)
-      start_machine(action_handler, machine_spec, machine_options)
-      vm = vm_for(machine_spec)
+      vm = start_machine(action_handler, machine_spec, machine_options)
       if vm.nil?
         raise "Machine #{machine_spec.name} does not have a server "\
         'associated with it, or server does not exist.'
@@ -385,6 +388,7 @@ module ChefProvisioningVsphere
           start_vm(vm, machine_options[:bootstrap_options][:ssh][:port])
         end
       end
+      vm
     end
 
     def restart_server(action_handler, machine_spec, vm)
@@ -467,16 +471,13 @@ module ChefProvisioningVsphere
     end
 
     def clone_vm(action_handler, bootstrap_options, machine_name)
-      datacenter = bootstrap_options[:datacenter]
-
-      vm = find_vm(datacenter, bootstrap_options[:vm_folder], machine_name)
+      vm = find_vm(bootstrap_options[:vm_folder], machine_name)
       return vm if vm
 
       vm_template = vm_template_for(bootstrap_options)
 
       do_vm_clone(
         action_handler,
-        datacenter,
         vm_template,
         machine_name,
         bootstrap_options
@@ -484,10 +485,10 @@ module ChefProvisioningVsphere
     end
 
     def vm_template_for(bootstrap_options)
-      datacenter      = bootstrap_options[:datacenter]
       template_folder = bootstrap_options[:template_folder]
       template_name   = bootstrap_options[:template_name]
-      find_vm(datacenter, template_folder, template_name) or raise("vSphere VM Template not found [#{template_folder}/#{template_name}]")
+      find_vm(template_folder, template_name) ||
+        raise("vSphere VM Template not found [#{template_folder}/#{template_name}]")
     end
 
     def machine_for(machine_spec, machine_options)
