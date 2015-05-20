@@ -147,7 +147,7 @@ module ChefProvisioningVsphere
     def merge_options!(machine_options)
       @config = Cheffish::MergedConfig.new(
         { machine_options: machine_options },
-        config
+        @config
       )
     end
 
@@ -534,15 +534,21 @@ module ChefProvisioningVsphere
       require 'chef/provisioning/convergence_strategy/install_msi'
       require 'chef/provisioning/convergence_strategy/install_cached'
       require 'chef/provisioning/convergence_strategy/no_converge'
-      # Defaults
+
+      mopts = machine_options[:convergence_options].to_hash.dup
+      mopts[:chef_server] = mopts[:chef_server].to_hash.dup if mopts[:chef_server]
+
       if !machine_spec.location
-        return Chef::Provisioning::ConvergenceStrategy::NoConverge.new(machine_options[:convergence_options], config)
+        return Chef::Provisioning::ConvergenceStrategy::NoConverge.new(
+          mopts, config)
       end
 
       if machine_spec.location['is_windows']
-        Chef::Provisioning::ConvergenceStrategy::InstallMsi.new(machine_options[:convergence_options], config)
+        Chef::Provisioning::ConvergenceStrategy::InstallMsi.new(
+          mopts, config)
       else
-        Chef::Provisioning::ConvergenceStrategy::InstallCached.new(machine_options[:convergence_options], config)
+        Chef::Provisioning::ConvergenceStrategy::InstallCached.new(
+          mopts, config)
       end
     end
 
