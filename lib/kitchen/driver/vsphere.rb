@@ -74,12 +74,12 @@ module Kitchen
           chef_server = Cheffish.default_chef_server
           config[:machine_options][:convergence_options] = {:chef_server => chef_server}
           machine_spec = Chef::Provisioning.chef_managed_entry_store(chef_server).new_entry(:machine, name)
-          driver = Chef::Provisioning.driver_for_url("vsphere://#{config[:driver_options][:host]}", config)
+          url = URI::VsphereUrl.from_config(@config[:driver_options]).to_s
+          driver = Chef::Provisioning.driver_for_url(url, config)
           action_handler = Chef::Provisioning::ActionHandler.new
           block.call(action_handler, driver, machine_spec)
         end
       end
-
     end
   end
 end
