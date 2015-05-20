@@ -231,48 +231,48 @@ module ChefProvisioningVsphere
     end
 
     def create_delta_disk(vm_template)
-        disks = vm_template.config.hardware.device.grep(RbVmomi::VIM::VirtualDisk)
-        disks.select { |disk| disk.backing.parent == nil }.each do |disk|
-          spec = {
-              :deviceChange => [
-                  {
-                      :operation => :remove,
-                      :device => disk
-                  },
-                  {
-                      :operation => :add,
-                      :fileOperation => :create,
-                      :device => disk.dup.tap { |new_disk|
-                        new_disk.backing = new_disk.backing.dup
-                        new_disk.backing.fileName = "[#{disk.backing.datastore.name}]"
-                        new_disk.backing.parent = disk.backing
-                      },
-                  }
-              ]
-          }
-          vm_template.ReconfigVM_Task(:spec => spec).wait_for_completion
-          end
+      disks = vm_template.config.hardware.device.grep(RbVmomi::VIM::VirtualDisk)
+      disks.select { |disk| disk.backing.parent == nil }.each do |disk|
+        spec = {
+          :deviceChange => [
+            {
+              :operation => :remove,
+              :device => disk
+            },
+            {
+              :operation => :add,
+              :fileOperation => :create,
+              :device => disk.dup.tap { |new_disk|
+                new_disk.backing = new_disk.backing.dup
+                new_disk.backing.fileName = "[#{disk.backing.datastore.name}]"
+                new_disk.backing.parent = disk.backing
+              },
+            }
+          ]
+        }
+        vm_template.ReconfigVM_Task(:spec => spec).wait_for_completion
+        end
       end
 
     def virtual_disk_for(vm, options)
       if options[:datastore].to_s.empty? 
-        raise ":datastore must be specified when adding a disk to a cloned vm"
+        raise ':datastore must be specified when adding a disk to a cloned vm'
       end
       idx = vm.disks.count
       RbVmomi::VIM::VirtualDeviceConfigSpec(
-            :operation     => :add,
-            :fileOperation => :create,
-            :device        => RbVmomi::VIM.VirtualDisk(
-              :key           => idx,
-              :backing       => RbVmomi::VIM.VirtualDiskFlatVer2BackingInfo(
-                :fileName        => "[#{options[:datastore]}]",
-                :diskMode        => 'persistent',
-                :thinProvisioned => true
-              ),
-              :capacityInKB  => options[:additional_disk_size_gb] * 1024 * 1024,
-              :controllerKey => 1000,
-              :unitNumber    => idx
-            )
+        :operation     => :add,
+        :fileOperation => :create,
+        :device        => RbVmomi::VIM.VirtualDisk(
+          :key           => idx,
+          :backing       => RbVmomi::VIM.VirtualDiskFlatVer2BackingInfo(
+            :fileName        => "[#{options[:datastore]}]",
+            :diskMode        => 'persistent',
+            :thinProvisioned => true
+          ),
+          :capacityInKB  => options[:additional_disk_size_gb] * 1024 * 1024,
+          :controllerKey => 1000,
+          :unitNumber    => idx
+        )
       )
     end
 
@@ -325,54 +325,58 @@ module ChefProvisioningVsphere
     end
 
     def find_datastore(datastore_name)
-        baseEntity = datacenter.datastore
-        baseEntity.find { |f| f.info.name == datastore_name } or raise "no such datastore #{datastore_name}"    
+      datacenter.datastore.find { |f| f.info.name == datastore_name } or raise "no such datastore #{datastore_name}"
     end
 
     def customization_options_from(action_handler, vm_template, vm_name, options)
       if options.has_key?(:customization_spec)
         if(options[:customization_spec].is_a?(Hash))
-            cust_options = options[:customization_spec]
-            raise ArgumentError, "domain is required" unless cust_options.key?(:domain)
-            cust_ip_settings = nil
-            if cust_options.key?(:ipsettings) and cust_options[:ipsettings].key?(:ip)
-              raise ArgumentError, "ip and subnetMask is required for static ip" unless cust_options[:ipsettings].key?(:ip) and
-                                                                                        cust_options[:ipsettings].key?(:subnetMask)
-              cust_ip_settings = RbVmomi::VIM::CustomizationIPSettings.new(cust_options[:ipsettings])
-              action_handler.report_progress "customizing #{vm_name} with static IP #{cust_options[:ipsettings][:ip]}"
-              cust_ip_settings.ip = RbVmomi::VIM::CustomizationFixedIp(:ipAddress => cust_options[:ipsettings][:ip])
-            end
-            cust_domain = cust_options[:domain]
-            if cust_ip_settings.nil?
-              cust_ip_settings= RbVmomi::VIM::CustomizationIPSettings.new(:ip => RbVmomi::VIM::CustomizationDhcpIpGenerator.new())
-              cust_ip_settings.dnsServerList = cust_options[:ipsettings][:dnsServerList]
-              action_handler.report_progress "customizing #{vm_name} with dynamic IP and DNS: #{cust_options[:ipsettings][:dnsServerList]}"
-            end
+          cust_options = options[:customization_spec]
+          ip_settings = cust_options[:ipsettings]
+          cust_domain = cust_options[:domain]
 
-            cust_ip_settings.dnsDomain = cust_domain
-            cust_global_ip_settings = RbVmomi::VIM::CustomizationGlobalIPSettings.new
-            cust_global_ip_settings.dnsServerList = cust_ip_settings.dnsServerList
-            cust_global_ip_settings.dnsSuffixList = [cust_domain]
-            cust_hostname = hostname_from(options[:customization_spec], vm_name)
-            cust_hwclockutc = cust_options[:hw_clock_utc]
-            cust_timezone = cust_options[:time_zone]
-
-            if vm_template.config.guestId.start_with?('win')
-              cust_prep = windows_prep_for(action_handler, options, vm_name)
-            else
-              cust_prep = RbVmomi::VIM::CustomizationLinuxPrep.new(
-                :domain => cust_domain,
-                :hostName => cust_hostname,
-                :hwClockUTC => cust_hwclockutc,
-                :timeZone => cust_timezone)
+          raise ArgumentError, 'domain is required' unless cust_domain
+          cust_ip_settings = nil
+          if ip_settings && ip_settings.key?(:ip)
+            unless cust_options[:ipsettings].key?(:subnetMask)
+              raise ArgumentError, 'subnetMask is required for static ip'
             end
-              cust_adapter_mapping = [RbVmomi::VIM::CustomizationAdapterMapping.new(:adapter => cust_ip_settings)]
-              RbVmomi::VIM::CustomizationSpec.new(
-                :identity => cust_prep,
-                :globalIPSettings => cust_global_ip_settings,
-                :nicSettingMap => cust_adapter_mapping)
+            cust_ip_settings = RbVmomi::VIM::CustomizationIPSettings.new(ip_settings)
+            action_handler.report_progress "customizing #{vm_name} with static IP #{ip_settings[:ip]}"
+            cust_ip_settings.ip = RbVmomi::VIM::CustomizationFixedIp(:ipAddress => ip_settings[:ip])
+          end
+          if cust_ip_settings.nil?
+            cust_ip_settings= RbVmomi::VIM::CustomizationIPSettings.new(:ip => RbVmomi::VIM::CustomizationDhcpIpGenerator.new())
+            cust_ip_settings.dnsServerList = ip_settings[:dnsServerList]
+            action_handler.report_progress "customizing #{vm_name} with dynamic IP and DNS: #{ip_settings[:dnsServerList]}"
+          end
+
+          cust_ip_settings.dnsDomain = cust_domain
+          cust_global_ip_settings = RbVmomi::VIM::CustomizationGlobalIPSettings.new
+          cust_global_ip_settings.dnsServerList = cust_ip_settings.dnsServerList
+          cust_global_ip_settings.dnsSuffixList = [cust_domain]
+          cust_hostname = hostname_from(cust_options, vm_name)
+          cust_hwclockutc = cust_options[:hw_clock_utc]
+          cust_timezone = cust_options[:time_zone]
+
+          if vm_template.config.guestId.start_with?('win')
+            cust_prep = windows_prep_for(action_handler, options, vm_name)
+          else
+            cust_prep = RbVmomi::VIM::CustomizationLinuxPrep.new(
+              :domain => cust_domain,
+              :hostName => cust_hostname,
+              :hwClockUTC => cust_hwclockutc,
+              :timeZone => cust_timezone
+            )
+          end
+          cust_adapter_mapping = [RbVmomi::VIM::CustomizationAdapterMapping.new(:adapter => cust_ip_settings)]
+          RbVmomi::VIM::CustomizationSpec.new(
+            :identity => cust_prep,
+            :globalIPSettings => cust_global_ip_settings,
+            :nicSettingMap => cust_adapter_mapping
+          )
         else
-          find_customization_spec(options[:customization_spec])
+          find_customization_spec(cust_options)
         end
       end
     end
@@ -428,50 +432,56 @@ module ChefProvisioningVsphere
       end
     end
 
+    def find_entity(name, parent_folder, &block)
+      parts = name.split('/').reject(&:empty?)
+      parts.each do |item|
+        if parent_folder.is_a? RbVmomi::VIM::Folder
+          parent_folder = parent_folder.childEntity.find { |f| f.name == item }
+        else
+          parent_folder = block.call(parent_folder, item)
+        end
+      end
+      parent_folder
+    end
+
     def find_host(host_name)
-      baseEntity = datacenter.hostFolder
-      entityArray = host_name.split('/')
-      entityArray.each do |entityArrItem|
-        if entityArrItem != ''
-          if baseEntity.is_a? RbVmomi::VIM::Folder
-            baseEntity = baseEntity.childEntity.find { |f| f.name == entityArrItem } or nil
-          elsif baseEntity.is_a? RbVmomi::VIM::ClusterComputeResource or baseEntity.is_a? RbVmomi::VIM::ComputeResource
-            baseEntity = baseEntity.host.find { |f| f.name == entityArrItem } or nil
-          elsif baseEntity.is_a? RbVmomi::VIM::HostSystem
-            baseEntity = baseEntity.host.find { |f| f.name == entityArrItem } or nil
-          else
-            baseEntity = nil
-          end
+      host = find_entity(host_name, datacenter.hostFolder) do |parent, part|
+        case parent
+        when RbVmomi::VIM::ClusterComputeResource || RbVmomi::VIM::ComputeResource
+          parent.host.find { |f| f.name == part }
+        when RbVmomi::VIM::HostSystem
+          parent.host.find { |f| f.name == part }
+        else
+          nil
         end
       end
 
-      raise "vSphere Host not found [#{host_name}]" if baseEntity.nil?
+      raise "vSphere Host not found [#{host_name}]" if host.nil?
 
-      baseEntity = baseEntity.host if not baseEntity.is_a?(RbVmomi::VIM::HostSystem) and baseEntity.respond_to?(:host)
-      baseEntity
+      if !host.is_a?(RbVmomi::VIM::HostSystem) && host.respond_to?(:host)
+        host = host.host
+      end
+      host
     end
 
     def find_pool(pool_name)
-      baseEntity = datacenter.hostFolder
-      entityArray = pool_name.split('/')
-      entityArray.each do |entityArrItem|
-        if entityArrItem != ''
-          if baseEntity.is_a? RbVmomi::VIM::Folder
-            baseEntity = baseEntity.childEntity.find { |f| f.name == entityArrItem } or nil
-          elsif baseEntity.is_a? RbVmomi::VIM::ClusterComputeResource or baseEntity.is_a? RbVmomi::VIM::ComputeResource
-            baseEntity = baseEntity.resourcePool.resourcePool.find { |f| f.name == entityArrItem } or nil
-          elsif baseEntity.is_a? RbVmomi::VIM::ResourcePool
-            baseEntity = baseEntity.resourcePool.find { |f| f.name == entityArrItem } or nil
-          else
-            baseEntity = nil
-          end
+      pool = find_entity(pool_name, datacenter.hostFolder) do |parent, part|
+        case parent
+        when RbVmomi::VIM::ClusterComputeResource || RbVmomi::VIM::ComputeResource
+          parent.resourcePool.resourcePool.find { |f| f.name == part }
+        when RbVmomi::VIM::ResourcePool
+          parent.resourcePool.find { |f| f.name == part }
+        else
+          nil
         end
       end
 
-      raise "vSphere ResourcePool not found [#{pool_name}]" if baseEntity.nil?
+      raise "vSphere ResourcePool not found [#{pool_name}]" if pool.nil?
 
-      baseEntity = baseEntity.resourcePool if not baseEntity.is_a?(RbVmomi::VIM::ResourcePool) and baseEntity.respond_to?(:resourcePool)
-      baseEntity
+      if !pool.is_a?(RbVmomi::VIM::ResourcePool) && pool.respond_to?(:resourcePool)
+        pool = pool.resourcePool
+      end
+      pool
     end
 
     def find_network(name)
