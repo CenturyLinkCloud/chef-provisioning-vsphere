@@ -110,7 +110,6 @@ module ChefProvisioningVsphere
     #           -- vm_folder: name of the vSphere folder containing the VM
     #
     def allocate_machine(action_handler, machine_spec, machine_options)
-      puts "***************#{config}"
       if machine_spec.location
         Chef::Log.warn(
           "Checking to see if #{machine_spec.location} has been created...")
