@@ -73,33 +73,33 @@ This will use chef-zero and needs no chef server (only works for ssh). Note that
 
 ## Supported machine bootstrapping options
 
-`[:use_linked_clone]` - (true/false) great for testing but not recommended for production.
-`[:datacenter]` - Name of vsphere datacenter (*required*)
-`[:template_name]` - path to vmware template (can be template or a shutown vm) (*required*)
-`[:vm_folder]` - path to a folder where the machine will be created.
-`[:datastore]` - name of datastore to use
-`[:num_cpus]` -  number of cpus to allocate to machine
-`[:network_name]` - array of network names to use. A NIC will be added for each
-`[:memory_mb]` - number of megabytes to allocate for machine
-`[:host]` - `{cluster}`/`{host}` to use during provisioning
-`[:resource_pool]` - `{cluster}`/`{resource pool}` to use during provisioning
-`[:additional_disk_size_gb] - if provided an additional disk will be added with the specified number of gigabytes (*his requires a datastore to be specified*)
-`[:ssh][:user]` user to use for ssh/winrm (defaults to root on linux/administrator on windows)
-`[:ssh][:password]` - password to use for ssh/winrm
-`[:ssh][:paranoid]` - specifies the strictness of the host key verification checking
-`[:ssh][:port]` port to use for ssh/winrm (defaults to 22 for ssh or 5985 for winrm)
-`[:convergence_options][:install_msi_url]` - url to chef client msi to use (defaults to latest) 
-`[:convergence_options][:install_sh_url]` - the bach script to install chef client on linux (defaults to latest)
-`[:customization_spec][:ipsettings][:ip]` static ip to assign to machine
-`[:customization_spec][:ipsettings][:subnetMask]` - subnet to use
-`[:customization_spec][:ipsettings][:gateway]` - gateway to use
-``[:customization_spec][:ipsettings][:dnsServerList]` - array of DNS servers to use
-`[:customization_spec][:domain]` - domain to use (if not 'local' on a windows machine it will attempt to domain join)
-`[:customization_spec][:domainAdmin]` - domain admin account to use for domain join on windows (should be `{user name}`@`{domain}`)
-`[:customization_spec][:domainAdminPassword]` - domain administrator password
-`[:customization_spec][:org_name]` - org name used in sysprep on windows
-`[:customization_spec][:product_id]` - windows product key
-`[:customization_spec][:win_time_zone]` - numeric time zone for windows
+- `[:use_linked_clone]` - (true/false) great for testing but not recommended for production.
+- `[:datacenter]` - Name of vsphere datacenter (*required*)
+- `[:template_name]` - path to vmware template (can be template or a shutown vm) (*required*)
+- `[:vm_folder]` - path to a folder where the machine will be created.
+- `[:datastore]` - name of datastore to use
+- `[:num_cpus]` -  number of cpus to allocate to machine
+- `[:network_name]` - array of network names to use. A NIC will be added for each
+- `[:memory_mb]` - number of megabytes to allocate for machine
+- `[:host]` - `{cluster}`/`{host}` to use during provisioning
+- `[:resource_pool]` - `{cluster}`/`{resource pool}` to use during provisioning
+- `[:additional_disk_size_gb] - if provided an additional disk will be added with the specified number of gigabytes (*his requires a datastore to be specified*)
+- `[:ssh][:user]` user to use for ssh/winrm (defaults to root on linux/administrator on windows)
+- `[:ssh][:password]` - password to use for ssh/winrm
+- `[:ssh][:paranoid]` - specifies the strictness of the host key verification checking
+- `[:ssh][:port]` port to use for ssh/winrm (defaults to 22 for ssh or 5985 for winrm)
+- `[:convergence_options][:install_msi_url]` - url to chef client msi to use (defaults to latest) 
+- `[:convergence_options][:install_sh_url]` - the bach script to install chef client on linux (defaults to latest)
+- `[:customization_spec][:ipsettings][:ip]` static ip to assign to machine
+- `[:customization_spec][:ipsettings][:subnetMask]` - subnet to use
+- `[:customization_spec][:ipsettings][:gateway]` - gateway to use
+- `[:customization_spec][:ipsettings][:dnsServerList]` - array of DNS servers to use
+- `[:customization_spec][:domain]` - domain to use (if not 'local' on a windows machine it will attempt to domain join)
+- `[:customization_spec][:domainAdmin]` - domain admin account to use for domain join on windows (should be `{user name}`@`{domain}`)
+- `[:customization_spec][:domainAdminPassword]` - domain administrator password
+- `[:customization_spec][:org_name]` - org name used in sysprep on windows
+- `[:customization_spec][:product_id]` - windows product key
+- `[:customization_spec][:win_time_zone]` - numeric time zone for windows
 
 ## More config examples
 
