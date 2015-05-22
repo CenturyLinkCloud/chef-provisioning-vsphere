@@ -83,7 +83,7 @@ This will use chef-zero and needs no chef server (only works for ssh). Note that
 - `[:memory_mb]` - number of megabytes to allocate for machine
 - `[:host]` - `{cluster}`/`{host}` to use during provisioning
 - `[:resource_pool]` - `{cluster}`/`{resource pool}` to use during provisioning
-- `[:additional_disk_size_gb] - if provided an additional disk will be added with the specified number of gigabytes (*his requires a datastore to be specified*)
+- `[:additional_disk_size_gb]` - if provided an additional disk will be added with the specified number of gigabytes (*his requires a datastore to be specified*)
 - `[:ssh][:user]` user to use for ssh/winrm (defaults to root on linux/administrator on windows)
 - `[:ssh][:password]` - password to use for ssh/winrm
 - `[:ssh][:paranoid]` - specifies the strictness of the host key verification checking
