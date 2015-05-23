@@ -165,6 +165,46 @@ with_machine_options :bootstrap_options => {
 }
 ```
 
+## Kitchen Driver
+
+This chef-provisioning-driver comes with a test-kitchen driver. Here are example driver options you can add to your `kitchen.yml`.
+
+```
+driver_plugin: vsphere
+driver_config:
+  driver_options:
+    host: '1.2.3.5'
+    user: 'user'
+    password: 'pass'
+    insecure: true
+  machine_options:
+    start_timeout: 600
+    create_timeout: 600
+    ready_timeout: 90
+    bootstrap_options:
+      use_linked_clone: true
+      datacenter: 'DC'
+      template_name: 'UBUNTU1264'
+      vm_folder: 'TEST'
+      num_cpus: 2,
+      network_name:
+        - vlan_20_1.2.3.4
+      memory_mb: 4096
+      resource_pool: 'CLSTR/TEST'
+      ssh:
+        user: root
+        paranoid: false
+        password: password
+        port: 22
+      convergence_options:
+      customization_spec:
+        domain: local
+        ipsettings:
+          dnsServerList:
+            - 8.8.8.8
+            - 8.8.4.4
+```
+
 ## Contributions are welcome!
 
 We took care to make this driver as generic as possible but there wll certainly be implementation nuances that may not work for everyone. We are happy to accept contributions to improve the driver and make it more accessible to a broader set of use cases.
