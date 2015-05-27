@@ -26,10 +26,9 @@ module ChefProvisioningVsphere
       @current_connection
     end
 
-    def find_vm(vm_folder, vm_name)
-      folder = find_folder(vm_folder) ||
-        raise("vSphere Folder not found [#{vm_folder}] for vm #{vm_name}")
-      vm     = folder.find(vm_name, RbVmomi::VIM::VirtualMachine)
+    def find_vm(folder, vm_name)
+      folder = find_folder(folder) unless folder.is_a? RbVmomi::VIM::Folder
+      folder.find(vm_name, RbVmomi::VIM::VirtualMachine)
     end
 
     def find_vm_by_id(uuid, connection = vim)
@@ -99,12 +98,10 @@ module ChefProvisioningVsphere
     #folder could be like:  /Level1/Level2/folder_name
     def find_folder(folder_name)
       base = datacenter.vmFolder
-      if folder_name && folder_name.length > 0
-        entityArray = folder_name.split('/').reject(&:empty?)
-        entityArray.each do |item|
-          base = base.childEntity.grep(RbVmomi::VIM::Folder).find do |f|
-            f.name == item
-          end
+      unless folder_name.nil?
+        folder_name.split('/').reject(&:empty?).each do |item|
+          base = base.find(item, RbVmomi::VIM::Folder) ||
+            raise("vSphere Folder not found [#{folder_name}]")
         end
       end
       base
@@ -168,13 +165,14 @@ module ChefProvisioningVsphere
         clone_spec.config.deviceChange = changes
       end
 
+      vm_folder = find_folder(options[:vm_folder])
       vm_template.CloneVM_Task(
         name: vm_name,
-        folder: find_folder(options[:vm_folder]),
+        folder: vm_folder,
         spec: clone_spec
       ).wait_for_completion
 
-      vm = find_vm(options[:vm_folder], vm_name)
+      vm = find_vm(vm_folder, vm_name)
 
       if options[:additional_disk_size_gb].to_i > 0
         task = vm.ReconfigVM_Task(:spec => RbVmomi::VIM.VirtualMachineConfigSpec(:deviceChange => [virtual_disk_for(vm, options)]))

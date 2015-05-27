@@ -167,7 +167,6 @@ module ChefProvisioningVsphere
         bootstrap_options[:vm_folder],
         machine_spec.name
       )
-      server_id = nil
       if vm
         Chef::Log.info machine_msg(
           machine_spec.name,
@@ -485,14 +484,9 @@ module ChefProvisioningVsphere
     end
 
     def clone_vm(action_handler, bootstrap_options, machine_name)
-      vm = find_vm(bootstrap_options[:vm_folder], machine_name)
-      return vm if vm
-
-      vm_template = vm_template_for(bootstrap_options)
-
       do_vm_clone(
         action_handler,
-        vm_template,
+        vm_template_for(bootstrap_options),
         machine_name,
         bootstrap_options
       )
