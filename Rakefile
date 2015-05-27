@@ -1,8 +1,13 @@
 require 'bundler/gem_tasks'
+require 'chef/provisioning/vsphere_driver/version'
 require 'rspec/core/rake_task'
+require "rubocop/rake_task"
 
 $:.unshift(File.dirname(__FILE__) + '/lib')
-require 'chef/provisioning/vsphere_driver/version'
+
+RuboCop::RakeTask.new(:style) do |task|
+  task.options << "--display-cop-names"
+end
 
 RSpec::Core::RakeTask.new(:unit) do |task|
   task.pattern = 'spec/unit_tests/*_spec.rb'
