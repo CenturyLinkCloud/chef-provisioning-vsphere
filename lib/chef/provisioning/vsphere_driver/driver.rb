@@ -214,6 +214,7 @@ module ChefProvisioningVsphere
       )
 
       machine = machine_for(machine_spec,machine_options)
+
       setup_extra_nics(action_handler, bootstrap_options, vm, machine)
 
       if has_static_ip(bootstrap_options) && !is_windows?(vm)
@@ -224,6 +225,12 @@ module ChefProvisioningVsphere
     end
 
     def setup_extra_nics(action_handler, bootstrap_options, vm, machine)
+      networks=bootstrap_options[:network_name]
+      if networks.kind_of?(String)
+        networks=[networks]
+      end
+      return if networks.nil? || networks.count < 2
+
       new_nics = add_extra_nic(
         action_handler,
         vm_template_for(bootstrap_options),
