@@ -135,14 +135,12 @@ with_machine_options :bootstrap_options => {
 
 ### Domain joined windows machine
 
-Note: You must run chef-client against a server for a windows box. You cn do this locally since the provisioning recipe should not change the state of the provisioner. You will need to upload the cookbook (both the one doing the provisioning and the one used in the provisioned machine's runlist) before running `chef-client`.
-
 ```
 with_machine_options :bootstrap_options => {
   use_linked_clone: true,
   num_cpus: 2,
   memory_mb: 4096,
-  network_name: ["vlan_20_172.21.20"],
+  network_name: ['vlan_20_172.21.20'],
   datacenter: 'datacenter_name',
   resource_pool: 'cluster',
   template_name: 'path to template',
@@ -150,19 +148,28 @@ with_machine_options :bootstrap_options => {
     ipsettings: {
       dnsServerList: ['1.2.3.31','1.2.3.41']
     },
-    domain => 'blah.com',
-    domainAdmin => "administrator@blah.com",
-    domainAdminPassword => "Passwordyoyoyo",
-    org_name => 'acme',
-    product_id => 'CDAA-87DC-3455-FF77-2AAC',
-    win_time_zone => 4
+    domain: 'blah.com',
+    domainAdmin: 'administrator@blah.com',
+    domainAdminPassword: 'Passwordyoyoyo',
+    org_name: 'acme',
+    product_id: 'CDAA-87DC-3455-FF77-2AAC',
+    win_time_zone: 4
   }
-  :ssh => {
-    :user => 'administrator',
-    :password => 'password',
-    :paranoid => false,
+  ssh: {
+    user: 'administrator',
+    password: 'password',
+    paranoid: false,
   }
+},
+:convergence_options => {
+  :ssl_verify_mode => :verify_none
 }
+```
+Note: You must run chef-client against a server for a windows box. You can do this locally since the provisioning recipe should not change the state of the provisioner. You will need to upload the cookbook (both the one doing the provisioning and the one used in the provisioned machine's runlist) before running `chef-client`.
+
+```
+knife cookbook upload my_cookbook
+chef-client -o 'my_cookbook::provision' -c .chef/knife.rb
 ```
 
 ## Kitchen Driver
