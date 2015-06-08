@@ -11,17 +11,17 @@ chef-provisioning-vsphere supports provisioning Unix/ssh and Windows/winrm guest
 
 A vcenter and valid login credentials.
 
-### VM Teplate
+### VM Template
 
 A VM template capable of installing Chef 11.8 or newer. This can be either windows or linux flavored.
 
 ### A provisioning node (can be local)
 
-An environment equipped with the chef client and the chef-Provision-vsphere gem.
+An environment equipped with the chef client and the chef-provisioning-vsphere gem.
 
 ## A basic provisioning recipe
 
-This is a minimal machine devinition that will use a dhcp assigned ip (it assumes the presense of a dhcp server). For test purposes this uses a linked clone for a faster provisioning time. This recipe should be used with a linux template. Windows provisioned servers need to point to a chef server for the cookbooks since winrm does not support port forwarding and there fore cannot reach back on the chef-zero port to get the local cookbooks. See examples below.
+This is a minimal machine definition that will use a dhcp assigned ip (it assumes the presense of a dhcp server). For test purposes this uses a linked clone for a faster provisioning time. This recipe should be used with a linux template. Windows provisioned servers need to point to a chef server for the cookbooks since winrm does not support port forwarding and there fore cannot reach back on the chef-zero port to get the local cookbooks. See examples below.
 
 ```
 chef_gem 'chef-provisioning-vsphere' do
