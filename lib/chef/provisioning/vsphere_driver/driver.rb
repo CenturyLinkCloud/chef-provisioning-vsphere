@@ -292,7 +292,7 @@ module ChefProvisioningVsphere
             vm.config.instanceUuid,
             'started but SSH did not come up.  Rebooting...'
           ))
-          restart_server(action_handler, machine_spec, vm)
+          restart_server(action_handler, machine_spec, machine_options)
           wait_until_ready(action_handler, machine_spec, machine_options, vm)
           wait_for_transport(action_handler, machine_spec, machine_options, vm)
         end
@@ -315,7 +315,7 @@ module ChefProvisioningVsphere
           action_handler.report_progress(msg.join)
           start_vm(vm)
         else
-          restart_server(action_handler, machine_spec, vm)
+          restart_server(action_handler, machine_spec, machine_options)
         end
         wait_for_ip(vm, machine_options, action_handler)
       end
@@ -411,10 +411,10 @@ module ChefProvisioningVsphere
       vm
     end
 
-    def restart_server(action_handler, machine_spec, vm)
+    def restart_server(action_handler, machine_spec, machine_options)
       action_handler.perform_action "restart machine #{machine_spec.name} (#{vm.config.instanceUuid} on #{driver_url})" do
-        stop_machine(action_handler, machine_spec, vm)
-        start_vm(vm)
+        stop_machine(action_handler, machine_spec, machine_options)
+        start_machine(action_handler, machine_spec, machine_options)
         machine_spec.location['started_at'] = Time.now.utc.to_s
       end
     end
