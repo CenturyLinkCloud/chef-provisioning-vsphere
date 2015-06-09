@@ -412,7 +412,7 @@ module ChefProvisioningVsphere
     end
 
     def restart_server(action_handler, machine_spec, machine_options)
-      action_handler.perform_action "restart machine #{machine_spec.name} (#{vm.config.instanceUuid} on #{driver_url})" do
+      action_handler.perform_action "restart machine #{machine_spec.name} (#{driver_url})" do
         stop_machine(action_handler, machine_spec, machine_options)
         start_machine(action_handler, machine_spec, machine_options)
         machine_spec.location['started_at'] = Time.now.utc.to_s
