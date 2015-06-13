@@ -38,6 +38,7 @@ describe 'vsphere_driver' do
     @vm_name = "cmvd-test-#{SecureRandom.hex}"
     @metal_config = eval File.read(File.expand_path('../config.rb', __FILE__))
     Cheffish.honor_local_mode do
+      Chef::Log.level = :debug
       chef_server = Cheffish.default_chef_server
       @machine_spec = Chef::Provisioning.chef_managed_entry_store(chef_server).new_entry(:machine, @vm_name)
       url = URI::VsphereUrl.from_config(@metal_config[:driver_options]).to_s
