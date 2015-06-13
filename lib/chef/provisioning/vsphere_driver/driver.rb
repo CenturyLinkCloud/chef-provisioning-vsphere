@@ -3,6 +3,7 @@ require 'cheffish/merged_config'
 require 'chef/provisioning/driver'
 require 'chef/provisioning/machine/windows_machine'
 require 'chef/provisioning/machine/unix_machine'
+require 'chef/provisioning/vsphere_driver/clone_spec_builder'
 require 'chef/provisioning/vsphere_driver/version'
 require 'chef/provisioning/vsphere_driver/vsphere_helpers'
 require 'chef/provisioning/vsphere_driver/vsphere_url'
@@ -11,7 +12,6 @@ module ChefProvisioningVsphere
   # Provisions machines in vSphere.
   class VsphereDriver < Chef::Provisioning::Driver
     include Chef::Mixin::ShellOut
-    include ChefProvisioningVsphere::Helpers
 
     def self.from_url(driver_url, config)
       VsphereDriver.new(driver_url, config)
@@ -163,7 +163,7 @@ module ChefProvisioningVsphere
     end
 
     def find_or_create_vm(bootstrap_options, machine_spec, action_handler)
-      vm = find_vm(
+      vm = vsphere_helper.find_vm(
         bootstrap_options[:vm_folder],
         machine_spec.name
       )
@@ -231,7 +231,7 @@ module ChefProvisioningVsphere
       end
       return if networks.nil? || networks.count < 2
 
-      new_nics = add_extra_nic(
+      new_nics = vsphere_helper.add_extra_nic(
         action_handler,
         vm_template_for(bootstrap_options),
         bootstrap_options,
@@ -313,7 +313,7 @@ module ChefProvisioningVsphere
           msg << vm.guest.toolsRunningStatus
           msg << '. powering up server...'
           action_handler.report_progress(msg.join)
-          start_vm(vm)
+          vsphere_helper.start_vm(vm)
         else
           restart_server(action_handler, machine_spec, machine_options)
         end
@@ -395,7 +395,7 @@ module ChefProvisioningVsphere
       vm = vm_for(machine_spec)
       if vm
         action_handler.perform_action "Shutdown guest OS and power off VM [#{vm.parent.name}/#{vm.name}]" do
-          stop_vm(vm)
+          vsphere_helper.stop_vm(vm)
         end
       end
     end
@@ -405,7 +405,7 @@ module ChefProvisioningVsphere
       vm = vm_for(machine_spec)
       if vm
         action_handler.perform_action "Power on VM [#{vm.parent.name}/#{vm.name}]" do
-          start_vm(vm, machine_options[:bootstrap_options][:ssh][:port])
+          vsphere_helper.start_vm(vm, machine_options[:bootstrap_options][:ssh][:port])
         end
       end
       vm
@@ -484,25 +484,52 @@ module ChefProvisioningVsphere
 
     def vm_for(machine_spec)
       if machine_spec.location
-        find_vm_by_id(machine_spec.location['server_id'])
+        vsphere_helper.find_vm_by_id(machine_spec.location['server_id'])
       else
         nil
       end
     end
 
     def clone_vm(action_handler, bootstrap_options, machine_name)
-      do_vm_clone(
-        action_handler,
-        vm_template_for(bootstrap_options),
-        machine_name,
-        bootstrap_options
+      vm_template = vm_template_for(bootstrap_options)
+
+      spec_builder = CloneSpecBuilder.new(vsphere_helper, action_handler)
+      clone_spec = spec_builder.build(vm_template, machine_name, bootstrap_options)
+      
+      vm_folder = vsphere_helper.find_folder(bootstrap_options[:vm_folder])
+      vm_template.CloneVM_Task(
+        name: machine_name,
+        folder: vm_folder,
+        spec: clone_spec
+      ).wait_for_completion
+
+      vm = vsphere_helper.find_vm(vm_folder, machine_name)
+
+      if bootstrap_options[:additional_disk_size_gb].to_i > 0
+        task = vm.ReconfigVM_Task(
+          spec: RbVmomi::VIM.VirtualMachineConfigSpec(
+            deviceChange: [
+              vsphere_helper.virtual_disk_for(vm, bootstrap_options)
+            ]
+          )
+        )
+        task.wait_for_completion
+      end
+
+      vm
+    end
+
+    def vsphere_helper
+      @vsphere_helper ||= VsphereHelper.new(
+        connect_options, 
+        config[:machine_options][:bootstrap_options][:datacenter]
       )
     end
 
     def vm_template_for(bootstrap_options)
       template_folder = bootstrap_options[:template_folder]
       template_name   = bootstrap_options[:template_name]
-      find_vm(template_folder, template_name) ||
+      vsphere_helper.find_vm(template_folder, template_name) ||
         raise("vSphere VM Template not found [#{template_folder}/#{template_name}]")
     end
 

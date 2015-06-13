@@ -34,8 +34,6 @@ require 'chef/provisioning/machine_spec'
   # }
 
 describe 'vsphere_driver' do
-  include ChefProvisioningVsphere::Helpers
-
   before :all do
     @vm_name = "cmvd-test-#{SecureRandom.hex}"
     @metal_config = eval File.read(File.expand_path('../config.rb', __FILE__))
@@ -49,8 +47,11 @@ describe 'vsphere_driver' do
       @metal_config[:machine_options][:convergence_options] = {:chef_server => chef_server}
       machine = @driver.ready_machine(action_handler, @machine_spec, @metal_config[:machine_options])
       @server_id = @machine_spec.location['server_id']
-      @connection = vim(@metal_config[:driver_options])
-      @vm = find_vm_by_id(@server_id, @connection)
+      @vsphere_helper = ChefProvisioningVsphere::VsphereHelper.new(
+        @metal_config[:driver_options],
+        @metal_config[:machine_options][:bootstrap_options][:datacenter]
+      )
+      @vm = @vsphere_helper.find_vm_by_id(@server_id)
     end
   end
 
@@ -101,7 +102,7 @@ describe 'vsphere_driver' do
       end
     end
     it 'is in the correct datacenter' do
-      expect(@connection.serviceInstance.find_datacenter(@metal_config[:machine_options][:bootstrap_options][:datacenter]).find_vm("#{@vm.parent.name}/#{@vm_name}")).not_to eq(nil)
+      expect(@vsphere_helper.vim.serviceInstance.find_datacenter(@metal_config[:machine_options][:bootstrap_options][:datacenter]).find_vm("#{@vm.parent.name}/#{@vm_name}")).not_to eq(nil)
     end
     it 'has an added disk of the correct size' do
       disk_count = @vm.disks.count
@@ -146,7 +147,7 @@ describe 'vsphere_driver' do
           @metal_config[:machine_options]
         )
       end
-      vm = find_vm_by_id(@server_id, @connection)
+      vm = @vsphere_helper.find_vm_by_id(@server_id)
       expect(vm).to eq(nil)
     end
   end
