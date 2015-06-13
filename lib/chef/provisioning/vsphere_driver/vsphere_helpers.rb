@@ -337,8 +337,8 @@ module ChefProvisioningVsphere
 
       raise "vSphere Host not found [#{host_name}]" if host.nil?
 
-      if !host.is_a?(RbVmomi::VIM::HostSystem) && host.respond_to?(:host)
-        host = host.host
+      if host.is_a?(RbVmomi::VIM::ComputeResource)
+        host = host.first
       end
       host
     end
