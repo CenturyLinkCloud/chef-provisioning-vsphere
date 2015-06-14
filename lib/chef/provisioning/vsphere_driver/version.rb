@@ -1,3 +1,3 @@
 module ChefProvisioningVsphere
-  VERSION = '0.5.7.dev2'
+  VERSION = '0.5.7.dev3'
 end

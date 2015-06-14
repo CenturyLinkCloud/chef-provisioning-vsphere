@@ -231,7 +231,9 @@ module ChefProvisioningVsphere
     def find_entity(name, parent_folder, &block)
       parts = name.split('/').reject(&:empty?)
       parts.each do |item|
+        Chef::Log.debug("Identifying entity part: #{item} in folder type: #{parent_folder.class}")
         if parent_folder.is_a? RbVmomi::VIM::Folder
+          Chef::Log.debug('Parent folder is a folder')
           parent_folder = parent_folder.childEntity.find { |f| f.name == item }
         else
           parent_folder = block.call(parent_folder, item)
@@ -261,13 +263,21 @@ module ChefProvisioningVsphere
     end
 
     def find_pool(pool_name)
+      Chef::Log.debug("Finding pool: #{pool_name}")
       pool = find_entity(pool_name, datacenter.hostFolder) do |parent, part|
         case parent
         when RbVmomi::VIM::ClusterComputeResource || RbVmomi::VIM::ComputeResource
+          Chef::Log.debug("finding #{part} in a #{parent.class}: #{parent.name}")
+          Chef::Log.debug("Parent root pool has #{parent.resourcePool.resourcePool.count} pools")
+          parent.resourcePool.resourcePool.each { |p| Chef::Log.debug(p.name ) }
           parent.resourcePool.resourcePool.find { |f| f.name == part }
         when RbVmomi::VIM::ResourcePool
+          Chef::Log.debug("finding #{part} in a Resource Pool: #{parent.name}")
+          Chef::Log.debug("Pool has #{parent.resourcePool.count} pools")
+          parent.resourcePool.each { |p| Chef::Log.debug(p.name ) }
           parent.resourcePool.find { |f| f.name == part }
         else
+          Chef::Log.debug("parent of #{part} is unexpected type: #{patrent.class}")
           nil
         end
       end
