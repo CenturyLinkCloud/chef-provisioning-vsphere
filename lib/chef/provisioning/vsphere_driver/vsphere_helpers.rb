@@ -266,7 +266,7 @@ module ChefProvisioningVsphere
       Chef::Log.debug("Finding pool: #{pool_name}")
       pool = find_entity(pool_name, datacenter.hostFolder) do |parent, part|
         case parent
-        when RbVmomi::VIM::ClusterComputeResource || RbVmomi::VIM::ComputeResource
+        when RbVmomi::VIM::ClusterComputeResource, RbVmomi::VIM::ComputeResource
           Chef::Log.debug("finding #{part} in a #{parent.class}: #{parent.name}")
           Chef::Log.debug("Parent root pool has #{parent.resourcePool.resourcePool.count} pools")
           parent.resourcePool.resourcePool.each { |p| Chef::Log.debug(p.name ) }
@@ -277,7 +277,7 @@ module ChefProvisioningVsphere
           parent.resourcePool.each { |p| Chef::Log.debug(p.name ) }
           parent.resourcePool.find { |f| f.name == part }
         else
-          Chef::Log.debug("parent of #{part} is unexpected type: #{patrent.class}")
+          Chef::Log.debug("parent of #{part} is unexpected type: #{parent.class}")
           nil
         end
       end
