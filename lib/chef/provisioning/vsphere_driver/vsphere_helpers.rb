@@ -47,14 +47,6 @@ module ChefProvisioningVsphere
       )
     end
 
-    def vm_started?(vm, wait_on_port = 22)
-      return false if vm.nil?
-      state = vm.runtime.powerState
-      return false unless state == 'poweredOn'
-      return false unless port_ready?(vm, wait_on_port)
-      return true
-    end
-
     def vm_stopped?(vm)
       return true if vm.nil?
       state = vm.runtime.powerState
@@ -75,31 +67,6 @@ module ChefProvisioningVsphere
         sleep 2 until vm.runtime.powerState == 'poweredOff'
       rescue
         vm.PowerOffVM_Task.wait_for_completion
-      end
-    end
-
-    def port_ready?(vm, port)
-      vm_ip = vm.guest.ipAddress
-      return false if vm_ip.nil?
-
-      begin
-        tcp_socket = TCPSocket.new(vm_ip, port)
-        readable = IO.select([tcp_socket], nil, nil, 5)
-        if readable
-          true
-        else
-          false
-        end
-      rescue Errno::ETIMEDOUT
-        false
-      rescue Errno::EPERM
-        false
-      rescue Errno::ECONNREFUSED
-        false
-      rescue Errno::EHOSTUNREACH, Errno::ENETUNREACH
-        false
-      ensure
-        tcp_socket && tcp_socket.close
       end
     end
 
@@ -137,56 +104,6 @@ module ChefProvisioningVsphere
 
     def find_ethernet_cards_for(vm)
       vm.config.hardware.device.select {|d| d.is_a?(RbVmomi::VIM::VirtualEthernetCard)}
-    end
-
-    def do_vm_clone(action_handler, vm_template, vm_name, options)
-      deviceAdditions = []
-
-      clone_spec = RbVmomi::VIM.VirtualMachineCloneSpec(
-        location: relocate_spec_for(vm_template, options),
-        powerOn: false,
-        template: false,
-        config: RbVmomi::VIM.VirtualMachineConfigSpec(
-          :cpuHotAddEnabled => true,
-          :memoryHotAddEnabled => true,
-          :cpuHotRemoveEnabled => true,
-          :deviceChange => Array.new)
-      )
-
-      clone_spec.customization = customization_options_from(action_handler, vm_template, vm_name, options)
-
-      unless options[:annotation].to_s.nil?
-        clone_spec.config.annotation = options[:annotation]
-      end
-
-      unless options[:num_cpus].to_s.nil?
-        clone_spec.config.numCPUs = options[:num_cpus]
-      end
-
-      unless options[:memory_mb].to_s.nil?
-        clone_spec.config.memoryMB = options[:memory_mb]
-      end
-
-      unless options[:network_name].nil?
-        deviceAdditions, changes = network_device_changes(action_handler, vm_template, options)
-        clone_spec.config.deviceChange = changes
-      end
-
-      vm_folder = find_folder(options[:vm_folder])
-      vm_template.CloneVM_Task(
-        name: vm_name,
-        folder: vm_folder,
-        spec: clone_spec
-      ).wait_for_completion
-
-      vm = find_vm(vm_folder, vm_name)
-
-      if options[:additional_disk_size_gb].to_i > 0
-        task = vm.ReconfigVM_Task(:spec => RbVmomi::VIM.VirtualMachineConfigSpec(:deviceChange => [virtual_disk_for(vm, options)]))
-        task.wait_for_completion
-      end
-
-      vm
     end
 
     def add_extra_nic(action_handler, vm_template, options, vm)
