@@ -55,9 +55,12 @@ module ChefProvisioningVsphere
         host = vsphere_helper.find_host(options[:host])
         rspec = RbVmomi::VIM.VirtualMachineRelocateSpec(host: host) 
       else
-        pool = vm_template.resourcePool
-        vpool = vsphere_helper.find_pool(options[:resource_pool])
-        rspec = RbVmomi::VIM.VirtualMachineRelocateSpec(pool: vpool || pool)
+        if options[:resource_pool]
+          pool = vsphere_helper.find_pool(options[:resource_pool])
+        else
+          pool = vm_template.resourcePool
+        end
+        rspec = RbVmomi::VIM.VirtualMachineRelocateSpec(pool: pool)
         raise "either :host or :resource_pool must be specified \
           when cloning from a VM Template" if pool.nil?
       end
