@@ -495,7 +495,7 @@ module ChefProvisioningVsphere
 
       spec_builder = CloneSpecBuilder.new(vsphere_helper, action_handler)
       clone_spec = spec_builder.build(vm_template, machine_name, bootstrap_options)
-      Chef::Log.debug("Clone spec: #{clone_spec.pretty_inspect}")      
+      Chef::Log.debug("Clone spec: #{clone_spec.pretty_inspect}")
 
       vm_folder = vsphere_helper.find_folder(bootstrap_options[:vm_folder])
       vm_template.CloneVM_Task(

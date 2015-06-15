@@ -6,7 +6,11 @@ describe ChefProvisioningVsphere::CloneSpecBuilder do
   let(:options) { { host: 'host' } }
   let(:vm_template) { double('template', resourcePool: 'pool') }
 
-  before { allow(vm_template).to receive_message_chain(:config, :guestId) }
+  before do
+    allow(vm_template).to receive_message_chain(:config, :guestId)
+    allow(vm_template).to receive_message_chain(:config, :template)
+      .and_return(false)
+  end
 
   subject do
     builder = ChefProvisioningVsphere::CloneSpecBuilder.new(
@@ -24,10 +28,22 @@ describe ChefProvisioningVsphere::CloneSpecBuilder do
     end
   end
 
+  context 'using linked clone on a template source' do
+    before do
+      options[:use_linked_clone] = true
+      allow(vm_template).to receive_message_chain(:config, :template)
+        .and_return(true)
+    end
+
+    it 'does not set the disk move type of the relocation spec' do
+      expect(subject.location.diskMoveType).to be nil
+    end
+  end
+
   context 'not using linked clones' do
     before { options[:use_linked_clone] = false }
 
-    it 'sets the disk move type of the relocation spec' do
+    it 'does not set the disk move type of the relocation spec' do
       expect(subject.location.diskMoveType).to be nil
     end
   end
