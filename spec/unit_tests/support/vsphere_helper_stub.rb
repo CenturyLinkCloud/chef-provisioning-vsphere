@@ -11,7 +11,7 @@ module ChefProvisioningVsphereStubs
     end
 
     def find_host(host_name)
-      RbVmomi::VIM::HostSystem.new(nil, nil)
+      RbVmomi::VIM::HostSystem.new
     end
 
     def find_pool(pool_name)
@@ -27,6 +27,26 @@ module ChefProvisioningVsphereStubs
     end
 
     def create_delta_disk(vm_template)
+    end
+  end
+end
+
+module RbVmomi
+  class VIM::HostSystem
+    attr_reader :parent
+
+    def parent
+      @parent ||= RbVmomi::VIM::ComputeResource.new
+    end
+  end
+end
+
+module RbVmomi
+  class VIM::ComputeResource
+    attr_reader :resourcePool
+
+    def resourcePool
+      @resourcePool ||= RbVmomi::VIM::ResourcePool.new(nil, nil)
     end
   end
 end
