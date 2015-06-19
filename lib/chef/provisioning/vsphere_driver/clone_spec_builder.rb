@@ -146,11 +146,12 @@ module ChefProvisioningVsphere
     end
 
     def hostname_from(options, vm_name)
-      if options.key?(:hostname)
-        RbVmomi::VIM::CustomizationFixedName.new(:name => options[:hostname])
-      else
-        RbVmomi::VIM::CustomizationFixedName.new(:name => vm_name)
+      hostname = options[:hostname] || vm_name
+      test = /^([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])$/
+      if !(hostname =~ test)
+        raise 'Only letters, numbers or hyphens in hostnames allowed'
       end
+      RbVmomi::VIM::CustomizationFixedName.new(:name => hostname)
     end
 
     def windows_prep_for(options, vm_name)

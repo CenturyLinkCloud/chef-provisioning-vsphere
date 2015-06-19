@@ -1,5 +1,5 @@
 require 'chef/provisioning/vsphere_driver'
-
+require_relative 'support/fake_action_handler'
 require_relative 'support/vsphere_helper_stub'
 
 describe ChefProvisioningVsphere::CloneSpecBuilder do
@@ -8,6 +8,7 @@ describe ChefProvisioningVsphere::CloneSpecBuilder do
 
   before do
     allow(vm_template).to receive_message_chain(:config, :guestId)
+      .and_return('guest')
     allow(vm_template).to receive_message_chain(:config, :template)
       .and_return(false)
   end
@@ -15,7 +16,7 @@ describe ChefProvisioningVsphere::CloneSpecBuilder do
   subject do
     builder = ChefProvisioningVsphere::CloneSpecBuilder.new(
       ChefProvisioningVsphereStubs::VsphereHelperStub.new,
-      Chef::Provisioning::ActionHandler.new
+      ChefProvisioningVsphereStubs::FakeActionHandler.new
     )
     builder.build(vm_template, 'machine_name', options)
   end
@@ -96,7 +97,65 @@ describe ChefProvisioningVsphere::CloneSpecBuilder do
     end
 
     it 'raises an error' do
-      expect { subject.to raise_error }
+      expect { subject }.to raise_error
     end
+  end
+
+  context 'specifying a hostname' do
+    before do
+      options[:customization_spec] = { 
+        ipsettings: {},
+        hostname: hostname,
+        domain: 'local' 
+      }
+    end
+
+    context 'alpha characters only' do
+      let(:hostname) { 'myhost' }
+
+      it 'sets the spec hostname' do
+        expect(subject.customization.identity.hostName.name).to eq hostname
+      end
+    end
+
+    context 'alpha numeric characters only' do
+      let(:hostname) { 'myhost01' }
+
+      it 'sets the spec hostname' do
+        expect(subject.customization.identity.hostName.name).to eq hostname
+      end
+    end
+
+    context 'containing a dash' do
+      let(:hostname) { 'my-host01' }
+
+      it 'sets the spec hostname' do
+        expect(subject.customization.identity.hostName.name).to eq hostname
+      end
+    end
+
+    context 'containing an underscore' do
+      let(:hostname) { 'my_host' }
+
+      it 'raises an error' do
+        expect { subject }.to raise_error
+      end
+    end
+
+    context 'starting with a dash' do
+      let(:hostname) { '-myhost' }
+
+      it 'raises an error' do
+        expect { subject }.to raise_error
+      end
+    end
+
+    context 'ending with a dash' do
+      let(:hostname) { 'myhost-' }
+
+      it 'raises an error' do
+        expect { subject }.to raise_error
+      end
+    end    
   end
 end
