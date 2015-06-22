@@ -102,6 +102,13 @@ This will use chef-zero and needs no chef server (only works for ssh). Note that
 - `[:customization_spec][:product_id]` - windows product key
 - `[:customization_spec][:win_time_zone]` - numeric time zone for windows
 
+## Timeout options
+These are settings set at the root of `machine_options`. Chances are the defaults for these settings do not need to be changed:
+
+- `start_timeout` - number of seconds to wait for a machine to be accessible after a restart (default 10 minutes)
+- `create_timeout` - number of seconds to wait for a machine to be accessible after initiating provisioning (default 10 minutes)
+- `ready_timeout` - number of seconds to wait for customization to complete and vmware tools to come on line (default 5 minutes)
+
 ## More config examples
 
 ### Static IP and an additional 50GB disk
