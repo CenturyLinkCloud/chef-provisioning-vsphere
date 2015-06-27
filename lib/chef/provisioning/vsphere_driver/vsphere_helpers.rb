@@ -126,7 +126,7 @@ module ChefProvisioningVsphere
       if backing_info.is_a?(RbVmomi::VIM::VirtualEthernetCardDistributedVirtualPortBackingInfo)
         backing_info.port.portgroupKey
       else
-        backing_info.network
+        backing_info.deviceName
       end
     end
 
@@ -208,6 +208,7 @@ module ChefProvisioningVsphere
     end
 
     def backing_info_for(action_handler, network_name)
+      action_handler.report_progress('finding networks...')
       network = find_network(network_name)
       action_handler.report_progress(
         "network: #{network_name} is a #{network.class}")
@@ -296,7 +297,7 @@ module ChefProvisioningVsphere
       entity_array.each do |item|
         case base
         when RbVmomi::VIM::Folder
-          base = base.childEntity.find { |f| f.name == item }
+          base = base.find(item)
         when RbVmomi::VIM::VmwareDistributedVirtualSwitch
           idx = base.summary.portgroupName.find_index(item)
           base = idx.nil? ? nil : base.portgroup[idx]
