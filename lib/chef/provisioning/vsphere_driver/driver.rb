@@ -259,22 +259,24 @@ module ChefProvisioningVsphere
       # Customization below may change this to a valid ip
       wait_until_ready(action_handler, machine_spec, machine_options, vm)
       
-      # find the ip we actually want
-      # this will be the static ip to assign
-      # or the ip reported back by the vm if using dhcp
-      # it *may* be nil if just cloned
-      vm_ip = ip_to_bootstrap(bootstrap_options, vm)
-      transport = nil
-      unless vm_ip.nil?
-        transport = transport_for(machine_spec, bootstrap_options[:ssh], vm_ip)
-      end
+      if !machine_spec.location['ipaddress'] || !has_ip?(machine_spec.location['ipaddress'], vm)
+        # find the ip we actually want
+        # this will be the static ip to assign
+        # or the ip reported back by the vm if using dhcp
+        # it *may* be nil if just cloned
+        vm_ip = ip_to_bootstrap(bootstrap_options, vm)
+        transport = nil
+        unless vm_ip.nil?
+          transport = transport_for(machine_spec, bootstrap_options[:ssh], vm_ip)
+        end
 
-      unless !transport.nil? && transport.available? && has_ip?(vm_ip, vm)
-        attempt_ip(machine_options, action_handler, vm, machine_spec)
+        unless !transport.nil? && transport.available? && has_ip?(vm_ip, vm)
+          attempt_ip(machine_options, action_handler, vm, machine_spec)
+        end
+        machine_spec.location['ipaddress'] = vm.guest.ipAddress
+        action_handler.report_progress(
+          "IP address obtained: #{machine_spec.location['ipaddress']}")
       end
-      machine_spec.location['ipaddress'] = vm.guest.ipAddress
-      action_handler.report_progress(
-        "IP address obtained: #{machine_spec.location['ipaddress']}")
 
       wait_for_domain(bootstrap_options, vm, machine_spec, action_handler)
 
