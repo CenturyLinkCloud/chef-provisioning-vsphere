@@ -25,16 +25,17 @@ module Kitchen
         }
 
       def create(state)
-        config[:server_name] ||= "kitchen-#{SecureRandom.hex(4)}"
+        state[:vsphere_name] ||= "kitchen-#{SecureRandom.hex(4)}"
         state[:username] = config[:machine_options][:bootstrap_options][:ssh][:user]
         state[:password] = config[:machine_options][:bootstrap_options][:ssh][:password]
-        
-        machine = with_provisioning_driver(config[:server_name]) do | action_handler, driver, machine_spec|
+        config[:server_name] = state[:vsphere_name]
+
+        machine = with_provisioning_driver(state) do | action_handler, driver, machine_spec|
           driver.allocate_machine(action_handler, machine_spec, config[:machine_options])
           driver.ready_machine(action_handler, machine_spec, config[:machine_options])
           state[:server_id] = machine_spec.location['server_id']
           state[:hostname] = machine_spec.location['ipaddress']
-          state[:vsphere_name] = config[:server_name]
+          machine_spec.save(action_handler)
         end
 
         node_dir = File.join(instance.verifier[:test_base_path], "nodes")
@@ -49,13 +50,12 @@ module Kitchen
         File.open(node_file, 'w') do |out|
           out << JSON.pretty_generate(node)
         end
-
       end
 
       def destroy(state)
         return if state[:server_id].nil?
 
-        with_provisioning_driver(state[:vsphere_name]) do | action_handler, driver, machine_spec|
+        with_provisioning_driver(state) do | action_handler, driver, machine_spec|
           machine_spec.location = { 'driver_url' => driver.driver_url,
                         'server_id' => state[:server_id]}
           driver.destroy_machine(action_handler, machine_spec, config[:machine_options])
@@ -69,11 +69,15 @@ module Kitchen
         File.delete(node_file) if File.exist?(node_file)
       end
 
-      def with_provisioning_driver(name, &block)
+      def with_provisioning_driver(state, &block)
         Cheffish.honor_local_mode do
           chef_server = Cheffish.default_chef_server
           config[:machine_options][:convergence_options] = {:chef_server => chef_server}
-          machine_spec = Chef::Provisioning.chef_managed_entry_store(chef_server).new_entry(:machine, name)
+          machine_spec = Chef::Provisioning.chef_managed_entry_store(chef_server).get(:machine, state[:vsphere_name])
+          if machine_spec.nil?
+            machine_spec = Chef::Provisioning.chef_managed_entry_store(chef_server)
+              .new_entry(:machine, state[:vsphere_name])
+          end
           url = URI::VsphereUrl.from_config(@config[:driver_options]).to_s
           driver = Chef::Provisioning.driver_for_url(url, config)
           action_handler = Chef::Provisioning::ActionHandler.new
