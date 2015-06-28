@@ -7,6 +7,8 @@ module Kitchen
   module Driver
     class Vsphere < Kitchen::Driver::Base
 
+      @@chef_zero_server = false
+
       default_config :machine_options,
         :start_timeout => 600,
         :create_timeout => 600,
@@ -70,18 +72,42 @@ module Kitchen
       end
 
       def with_provisioning_driver(state, &block)
-        Cheffish.honor_local_mode do
-          chef_server = Cheffish.default_chef_server
-          config[:machine_options][:convergence_options] = {:chef_server => chef_server}
-          machine_spec = Chef::Provisioning.chef_managed_entry_store(chef_server).get(:machine, state[:vsphere_name])
-          if machine_spec.nil?
-            machine_spec = Chef::Provisioning.chef_managed_entry_store(chef_server)
-              .new_entry(:machine, state[:vsphere_name])
+        config[:machine_options][:convergence_options] = {:chef_server => chef_server}
+        machine_spec = Chef::Provisioning.chef_managed_entry_store(chef_server).get(:machine, state[:vsphere_name])
+        if machine_spec.nil?
+          machine_spec = Chef::Provisioning.chef_managed_entry_store(chef_server)
+            .new_entry(:machine, state[:vsphere_name])
+        end
+        url = URI::VsphereUrl.from_config(@config[:driver_options]).to_s
+        driver = Chef::Provisioning.driver_for_url(url, config)
+        action_handler = Chef::Provisioning::ActionHandler.new
+        block.call(action_handler, driver, machine_spec)
+      end
+
+      def chef_server
+        if !@@chef_zero_server
+          vsphere_mutex.synchronize do
+            if !@@chef_zero_server
+              Chef::Config.local_mode = true
+              Chef::Config.chef_repo_path = Chef::Config.find_chef_repo_path(Dir.pwd)
+              require 'chef/local_mode'
+              Chef::LocalMode.setup_server_connectivity
+              @@chef_zero_server = true
+            end
           end
-          url = URI::VsphereUrl.from_config(@config[:driver_options]).to_s
-          driver = Chef::Provisioning.driver_for_url(url, config)
-          action_handler = Chef::Provisioning::ActionHandler.new
-          block.call(action_handler, driver, machine_spec)
+        end
+
+        Cheffish.default_chef_server
+      end
+
+      def vsphere_mutex
+        @@vsphere_mutex ||= begin
+          Kitchen.mutex.synchronize do
+            instance.class.mutexes ||= Hash.new
+            instance.class.mutexes[self.class] = Mutex.new
+          end
+
+          instance.class.mutexes[self.class]
         end
       end
     end
