@@ -39,19 +39,6 @@ module Kitchen
           state[:hostname] = machine_spec.location['ipaddress']
           machine_spec.save(action_handler)
         end
-
-        node_dir = File.join(instance.verifier[:test_base_path], "nodes")
-        Dir.mkdir(node_dir) unless Dir.exist?(node_dir)
-        node_file = File.join(node_dir, "#{instance.suite.name}.json")
-        node = {
-          :id => instance.suite.name,
-          :automatic => {
-            :ipaddress => state[:hostname]
-          }
-        }
-        File.open(node_file, 'w') do |out|
-          out << JSON.pretty_generate(node)
-        end
       end
 
       def destroy(state)
@@ -66,9 +53,6 @@ module Kitchen
         state.delete(:server_id)
         state.delete(:hostname)
         state.delete(:vsphere_name)
-
-        node_file = File.join(instance.verifier[:test_base_path], "nodes/#{instance.suite.name}.json")
-        File.delete(node_file) if File.exist?(node_file)
       end
 
       def with_provisioning_driver(state, &block)
