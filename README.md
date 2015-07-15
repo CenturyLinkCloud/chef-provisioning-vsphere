@@ -93,7 +93,7 @@ This will use chef-zero and needs no chef server (only works for ssh). Note that
 - `[:convergence_options][:install_sh_url]` - the bach script to install chef client on linux (defaults to latest)
 - `[:customization_spec][:ipsettings][:ip]` static ip to assign to machine
 - `[:customization_spec][:ipsettings][:subnetMask]` - subnet to use
-- `[:customization_spec][:ipsettings][:gateway]` - gateway to use
+- `[:customization_spec][:ipsettings][:gateway]` - array of possible gateways to use (this will most often be an array of 1)
 - `[:customization_spec][:ipsettings][:dnsServerList]` - array of DNS servers to use
 - `[:customization_spec][:domain]` - domain to use (if not 'local' on a windows machine it will attempt to domain join)
 - `[:customization_spec][:domainAdmin]` - domain admin account to use for domain join on windows (should be `{user name}`@`{domain}`)
