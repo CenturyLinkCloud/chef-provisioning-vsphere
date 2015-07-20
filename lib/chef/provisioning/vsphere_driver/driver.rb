@@ -638,7 +638,7 @@ module ChefProvisioningVsphere
         host,
         ssh_user,
         options,
-        {},
+        @config[:machine_options][:sudo] ? {:prefix => 'sudo '} : {},
         config
       )
     end
