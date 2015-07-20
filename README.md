@@ -180,6 +180,48 @@ knife cookbook upload my_cookbook
 chef-client -o 'my_cookbook::provision' -c .chef/knife.rb
 ```
 
+### Prefix all SSH commands with 'sudo ', for installing on hosts where options[:bootstrap_options][:ssh][:user] is not 'root'. The user must have 'NOPASSWD:ALL' in /etc/sudoers. This is compatible with chef-provisioning-fog functionality
+
+```
+chef_gem 'chef-provisioning-vsphere' do
+  action :install
+  compile_time true
+end
+
+require 'chef/provisioning/vsphere_driver'
+
+with_vsphere_driver host: 'vcenter-host-name',
+  insecure: true,
+  user:     'you_user_name',
+  password: 'your_mothers_maiden_name'
+
+with_machine_options :bootstrap_options => {
+  use_linked_clone: true,
+  num_cpus: 2,
+  memory_mb: 4096,
+  network_name: ["vlan_20_172.21.20"],
+  datacenter: 'datacenter_name',
+  resource_pool: 'cluster',
+  template_name: 'path to template',
+  customization_spec: {
+    ipsettings: {
+      dnsServerList: ['1.2.3.31','1.2.3.41']
+    },
+    :domain => 'local'
+  }
+  :ssh => {
+    :user => 'root',
+    :password => 'password',
+    :paranoid => false,
+  }
+},
+:sudo => true
+
+machine "my_machine_name" do
+  run_list ['my_cookbook::default']
+end
+
+```
 ## Kitchen Driver
 
 This chef-provisioning-driver comes with a test-kitchen driver. Here are example driver options you can add to your `kitchen.yml`.
