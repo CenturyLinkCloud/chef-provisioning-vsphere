@@ -47,13 +47,6 @@ module ChefProvisioningVsphere
       )
     end
 
-    def vm_stopped?(vm)
-      return true if vm.nil?
-      state = vm.runtime.powerState
-      return false unless state == 'poweredOff'
-      return false
-    end
-
     def start_vm(vm, wait_on_port = 22)
       state = vm.runtime.powerState
       unless state == 'poweredOn'
@@ -61,10 +54,15 @@ module ChefProvisioningVsphere
       end
     end
 
-    def stop_vm(vm)
+    def stop_vm(vm, timeout = 600)
+        start = Time.now.utc
       begin
         vm.ShutdownGuest
-        sleep 2 until vm.runtime.powerState == 'poweredOff'
+        until (Time.now.utc - start) > timeout ||
+          vm.runtime.powerState == 'poweredOff' do
+            print '.'
+            sleep 2
+        end
       rescue
         vm.PowerOffVM_Task.wait_for_completion
       end
