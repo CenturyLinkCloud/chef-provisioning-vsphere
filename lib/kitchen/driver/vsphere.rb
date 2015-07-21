@@ -12,6 +12,7 @@ module Kitchen
       default_config :machine_options,
         :start_timeout => 600,
         :create_timeout => 600,
+        :stop_timeout => 600,
         :ready_timeout => 90,
         :bootstrap_options => {
           :use_linked_clone => true,

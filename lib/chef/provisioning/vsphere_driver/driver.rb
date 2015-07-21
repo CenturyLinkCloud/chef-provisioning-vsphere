@@ -377,6 +377,19 @@ module ChefProvisioningVsphere
       merge_options! machine_options
       vm = vm_for(machine_spec)
       if vm
+        if !has_static_ip(machine_options[:bootstrap_options]) && vm.runtime.powerState != 'poweredOff'
+          stop_timeout = (machine_options[:stop_timeout] || 600)
+          puts "Shutdown VM [#{vm.parent.name}/#{vm.name}] time out of #{stop_timeout} "
+          action_handler.perform_action "Finish shuting down or timed out" do
+            stop = Time.now.utc
+            vm.ShutdownGuest
+            until (Time.now.utc - stop) > stop_timeout || vm.runtime.powerState == 'poweredOff' do
+              action_handler.report_progress(
+                "wait to stop..")
+              sleep 2
+            end
+          end
+        end
         action_handler.perform_action "Delete VM [#{vm.parent.name}/#{vm.name}]" do
           begin
             vm.PowerOffVM_Task.wait_for_completion unless vm.runtime.powerState == 'poweredOff'
