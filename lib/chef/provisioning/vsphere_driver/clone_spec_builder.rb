@@ -86,7 +86,8 @@ module ChefProvisioningVsphere
 
     def customization_options_from(vm_template, vm_name, options)
       if options.has_key?(:customization_spec)
-        if(options[:customization_spec].is_a?(Hash))
+        if options[:customization_spec].is_a?(Hash) ||
+          options[:customization_spec].is_a?(Cheffish::MergedConfig)
           cust_options = options[:customization_spec]
           ip_settings = cust_options[:ipsettings]
           cust_domain = cust_options[:domain]
