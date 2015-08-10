@@ -98,6 +98,7 @@ This will use chef-zero and needs no chef server (only works for ssh). Note that
 - `[:customization_spec][:domain]` - domain to use (if not 'local' on a windows machine it will attempt to domain join)
 - `[:customization_spec][:domainAdmin]` - domain admin account to use for domain join on windows (should be `{user name}`@`{domain}`)
 - `[:customization_spec][:domainAdminPassword]` - domain administrator password
+- `[:customization_spec][:hostname]` - hostname to use. Defaults to machine resource name if not provided
 - `[:customization_spec][:org_name]` - org name used in sysprep on windows
 - `[:customization_spec][:product_id]` - windows product key
 - `[:customization_spec][:time_zone]` - The case-sensitive timezone, such as Europe/Sofia based on the tz (timezone) database used by Linux and other Unix systems
