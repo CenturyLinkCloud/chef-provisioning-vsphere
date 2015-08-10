@@ -100,6 +100,7 @@ This will use chef-zero and needs no chef server (only works for ssh). Note that
 - `[:customization_spec][:domainAdminPassword]` - domain administrator password
 - `[:customization_spec][:org_name]` - org name used in sysprep on windows
 - `[:customization_spec][:product_id]` - windows product key
+- `[:customization_spec][:time_zone]` - The case-sensitive timezone, such as Europe/Sofia based on the tz (timezone) database used by Linux and other Unix systems
 - `[:customization_spec][:win_time_zone]` - numeric time zone for windows
 
 ## Timeout options
