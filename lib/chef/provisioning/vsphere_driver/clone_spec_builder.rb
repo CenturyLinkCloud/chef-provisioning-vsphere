@@ -108,6 +108,9 @@ module ChefProvisioningVsphere
           if cust_ip_settings.nil?
             cust_ip_settings= RbVmomi::VIM::CustomizationIPSettings.new(
               :ip => RbVmomi::VIM::CustomizationDhcpIpGenerator.new())
+          end
+
+          if ip_settings && ip_settings.key?(:dnsServerList)
             cust_ip_settings.dnsServerList = ip_settings[:dnsServerList]
             action_handler.report_progress "customizing #{vm_name} with /
               dynamic IP and DNS: #{ip_settings[:dnsServerList]}"
