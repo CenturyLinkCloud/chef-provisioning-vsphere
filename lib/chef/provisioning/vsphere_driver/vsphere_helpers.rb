@@ -152,10 +152,7 @@ module ChefProvisioningVsphere
         end
       end
 
-    def virtual_disk_for(vm, options)
-      if options[:datastore].to_s.empty? 
-        raise ':datastore must be specified when adding a disk to a cloned vm'
-      end
+    def virtual_disk_for(vm, datastore, size_gb)
       idx = vm.disks.count
       RbVmomi::VIM::VirtualDeviceConfigSpec(
         :operation     => :add,
@@ -163,11 +160,11 @@ module ChefProvisioningVsphere
         :device        => RbVmomi::VIM.VirtualDisk(
           :key           => idx,
           :backing       => RbVmomi::VIM.VirtualDiskFlatVer2BackingInfo(
-            :fileName        => "[#{options[:datastore]}]",
+            :fileName        => "[#{datastore}]",
             :diskMode        => 'persistent',
             :thinProvisioned => true
           ),
-          :capacityInKB  => options[:additional_disk_size_gb] * 1024 * 1024,
+          :capacityInKB  => size_gb * 1024 * 1024,
           :controllerKey => 1000,
           :unitNumber    => idx
         )

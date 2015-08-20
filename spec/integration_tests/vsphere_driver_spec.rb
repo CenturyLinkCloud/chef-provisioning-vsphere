@@ -107,7 +107,10 @@ describe 'vsphere_driver' do
     end
     it 'has an added disk of the correct size' do
       disk_count = @vm.disks.count
-      expect(@vm.disks[disk_count-1].capacityInKB).to eq(@metal_config[:machine_options][:bootstrap_options][:additional_disk_size_gb] * 1024 * 1024)
+      expect(@vm.disks[disk_count-1].capacityInKB).to eq(@metal_config[:machine_options][:bootstrap_options][:additional_disk_size_gb][1] * 1024 * 1024)
+    end
+    it 'has the correct number of disks' do
+      expect(@vm.disks.count).to eq(3)
     end
     it 'has hot add cpu enabled' do
       expect(@vm.config.cpuHotAddEnabled).to eq(true)

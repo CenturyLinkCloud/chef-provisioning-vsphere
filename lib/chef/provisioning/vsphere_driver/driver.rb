@@ -508,11 +508,25 @@ module ChefProvisioningVsphere
 
       vm = vsphere_helper.find_vm(vm_folder, machine_name)
 
-      if bootstrap_options[:additional_disk_size_gb].to_i > 0
+      additional_disk_size_gb = bootstrap_options[:additional_disk_size_gb]
+      if !additional_disk_size_gb.is_a?(Array)
+        additional_disk_size_gb = [additional_disk_size_gb]
+      end        
+
+      additional_disk_size_gb.each do |size|
+        size = size.to_i
+        next if size == 0
+        if bootstrap_options[:datastore].to_s.empty? 
+          raise ':datastore must be specified when adding a disk to a cloned vm'
+        end
         task = vm.ReconfigVM_Task(
           spec: RbVmomi::VIM.VirtualMachineConfigSpec(
             deviceChange: [
-              vsphere_helper.virtual_disk_for(vm, bootstrap_options)
+              vsphere_helper.virtual_disk_for(
+                vm,
+                bootstrap_options[:datastore],
+                size
+              )
             ]
           )
         )

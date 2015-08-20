@@ -84,7 +84,7 @@ This will use chef-zero and needs no chef server (only works for ssh). Note that
 - `[:memory_mb]` - number of megabytes to allocate for machine
 - `[:host]` - `{cluster}`/`{host}` to use during provisioning
 - `[:resource_pool]` - `{cluster}`/`{resource pool}` to use during provisioning
-- `[:additional_disk_size_gb]` - if provided an additional disk will be added with the specified number of gigabytes (*his requires a datastore to be specified*)
+- `[:additional_disk_size_gb]` - an array of numbers, each signifying the number of gigabytes to assign to an additional disk (*his requires a datastore to be specified*)
 - `[:ssh][:user]` user to use for ssh/winrm (defaults to root on linux/administrator on windows)
 - `[:ssh][:password]` - password to use for ssh/winrm
 - `[:ssh][:paranoid]` - specifies the strictness of the host key verification checking
@@ -113,7 +113,7 @@ These are settings set at the root of `machine_options`. Chances are the default
 
 ## More config examples
 
-### Static IP and an additional 50GB disk
+### Static IP and two additional disks of 20 and 50GB
 
 ```
 with_machine_options :bootstrap_options => {
@@ -125,7 +125,7 @@ with_machine_options :bootstrap_options => {
   resource_pool: 'cluster',
   template_name: 'path to template',
   datastore: "my_data_store",
-  additional_disk_size_gb: 50,
+  additional_disk_size_gb: [50,20],
   customization_spec: {
     ipsettings: {
       ip: '192.168.3.4',
