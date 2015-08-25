@@ -581,7 +581,10 @@ module ChefProvisioningVsphere
       require 'chef/provisioning/convergence_strategy/no_converge'
 
       mopts = machine_options[:convergence_options].to_hash.dup
-      mopts[:chef_server] = mopts[:chef_server].to_hash.dup if mopts[:chef_server]
+      if mopts[:chef_server]
+        mopts[:chef_server] = mopts[:chef_server].to_hash.dup
+        mopts[:chef_server][:options] = mopts[:chef_server][:options].to_hash.dup if mopts[:chef_server][:options]
+      end
 
       if !machine_spec.location
         return Chef::Provisioning::ConvergenceStrategy::NoConverge.new(
