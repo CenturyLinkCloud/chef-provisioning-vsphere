@@ -27,8 +27,12 @@ module Kitchen
           }
         }
 
+      default_config(:vsphere_name) do |driver|
+        "#{driver.instance.name}-#{SecureRandom.hex(4)}"
+      end
+
       def create(state)
-        state[:vsphere_name] ||= "kitchen-#{SecureRandom.hex(4)}"
+        state[:vsphere_name] = config[:vsphere_name] 
         state[:username] = config[:machine_options][:bootstrap_options][:ssh][:user]
         state[:password] = config[:machine_options][:bootstrap_options][:ssh][:password]
         config[:server_name] = state[:vsphere_name]
