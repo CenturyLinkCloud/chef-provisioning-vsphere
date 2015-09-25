@@ -81,7 +81,8 @@ module ChefProvisioningVsphere
     end
 
     def datacenter
-      @datacenter ||= vim.serviceInstance.find_datacenter(datacenter_name) ||
+      rootFolder = vim.serviceInstance.content.rootFolder
+      @datacenter ||= rootFolder.childEntity.grep(RbVmomi::VIM::Datacenter).find { |x| x.name == datacenter_name } ||
         raise("vSphere Datacenter not found [#{datacenter_name}]")
     end
 
