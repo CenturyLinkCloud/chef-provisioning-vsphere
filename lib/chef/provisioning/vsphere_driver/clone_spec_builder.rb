@@ -144,7 +144,7 @@ module ChefProvisioningVsphere
             :nicSettingMap => cust_adapter_mapping
           )
         else
-          vsphere_helper.find_customization_spec(cust_options)
+          vsphere_helper.find_customization_spec(options[:customization_spec])
         end
       end
     end

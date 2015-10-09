@@ -14,6 +14,7 @@ module Kitchen
         :create_timeout => 600,
         :stop_timeout => 600,
         :ready_timeout => 90,
+        :ipv4_only => false,
         :bootstrap_options => {
           :use_linked_clone => true,
           :ssh => {
@@ -32,7 +33,7 @@ module Kitchen
       end
 
       def create(state)
-        state[:vsphere_name] = config[:vsphere_name] 
+        state[:vsphere_name] = config[:vsphere_name]
         state[:username] = config[:machine_options][:bootstrap_options][:ssh][:user]
         state[:password] = config[:machine_options][:bootstrap_options][:ssh][:password]
         config[:server_name] = state[:vsphere_name]

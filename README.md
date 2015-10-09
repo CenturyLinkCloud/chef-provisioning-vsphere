@@ -84,13 +84,13 @@ This will use chef-zero and needs no chef server (only works for ssh). Note that
 - `[:memory_mb]` - number of megabytes to allocate for machine
 - `[:host]` - `{cluster}`/`{host}` to use during provisioning
 - `[:resource_pool]` - `{cluster}`/`{resource pool}` to use during provisioning
-- `[:additional_disk_size_gb]` - an array of numbers, each signifying the number of gigabytes to assign to an additional disk (*his requires a datastore to be specified*)
+- `[:additional_disk_size_gb]` - an array of numbers, each signifying the number of gigabytes to assign to an additional disk (*this requires a datastore to be specified*)
 - `[:ssh][:user]` user to use for ssh/winrm (defaults to root on linux/administrator on windows)
 - `[:ssh][:password]` - password to use for ssh/winrm
 - `[:ssh][:paranoid]` - specifies the strictness of the host key verification checking
 - `[:ssh][:port]` port to use for ssh/winrm (defaults to 22 for ssh or 5985 for winrm)
-- `[:convergence_options][:install_msi_url]` - url to chef client msi to use (defaults to latest) 
-- `[:convergence_options][:install_sh_url]` - the bach script to install chef client on linux (defaults to latest)
+- `[:convergence_options][:install_msi_url]` - url to chef client msi to use (defaults to latest)
+- `[:convergence_options][:install_sh_url]` - the bash script to install chef client on linux (defaults to latest)
 - `[:customization_spec][:ipsettings][:ip]` static ip to assign to machine
 - `[:customization_spec][:ipsettings][:subnetMask]` - subnet to use
 - `[:customization_spec][:ipsettings][:gateway]` - array of possible gateways to use (this will most often be an array of 1)
@@ -110,6 +110,10 @@ These are settings set at the root of `machine_options`. Chances are the default
 - `start_timeout` - number of seconds to wait for a machine to be accessible after a restart (default 10 minutes)
 - `create_timeout` - number of seconds to wait for a machine to be accessible after initiating provisioning (default 10 minutes)
 - `ready_timeout` - number of seconds to wait for customization to complete and vmware tools to come on line (default 5 minutes)
+
+## Other options
+
+- `ipv4_only` - whether a VM must have an IPv4 address before being considered ready. Default value: false
 
 ## More config examples
 
@@ -240,6 +244,7 @@ driver_config:
     start_timeout: 600
     create_timeout: 600
     ready_timeout: 90
+    ipv4_only: false
     bootstrap_options:
       use_linked_clone: true
       datacenter: 'DC'

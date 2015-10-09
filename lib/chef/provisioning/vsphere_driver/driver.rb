@@ -46,7 +46,7 @@ module ChefProvisioningVsphere
       super(driver_url, config)
 
       uri = URI(driver_url)
-      @connect_options = { 
+      @connect_options = {
         provider: 'vsphere',
         host: uri.host,
         port: uri.port,
@@ -131,7 +131,7 @@ module ChefProvisioningVsphere
 
       action_handler.report_progress full_description(
         machine_spec, bootstrap_options)
-      
+
       vm = find_or_create_vm(bootstrap_options, machine_spec, action_handler)
 
       add_machine_spec_location(vm, machine_spec)
@@ -258,7 +258,7 @@ module ChefProvisioningVsphere
       # This may just be the ip of a newly cloned machine
       # Customization below may change this to a valid ip
       wait_until_ready(action_handler, machine_spec, machine_options, vm)
-      
+
       if !machine_spec.location['ipaddress'] || !has_ip?(machine_spec.location['ipaddress'], vm)
         # find the ip we actually want
         # this will be the static ip to assign
@@ -303,7 +303,7 @@ module ChefProvisioningVsphere
 
     def attempt_ip(machine_options, action_handler, vm, machine_spec)
       vm_ip = ip_to_bootstrap(machine_options[:bootstrap_options], vm)
-      
+
       wait_for_ip(vm, machine_options, action_handler)
 
       unless has_ip?(vm_ip, vm)
@@ -325,6 +325,7 @@ module ChefProvisioningVsphere
 
     def wait_for_domain(bootstrap_options, vm, machine_spec, action_handler)
       return unless bootstrap_options[:customization_spec]
+      return unless bootstrap_options[:customization_spec].is_a?(Hash) || bootstrap_options[:customization_spec].is_a?(Cheffish::MergedConfig)
       return unless bootstrap_options[:customization_spec][:domain]
 
       domain = bootstrap_options[:customization_spec][:domain]
@@ -450,7 +451,8 @@ module ChefProvisioningVsphere
     def has_static_ip(bootstrap_options)
       if bootstrap_options.has_key?(:customization_spec)
         bootstrap_options = bootstrap_options[:customization_spec]
-        if bootstrap_options.has_key?(:ipsettings)
+        if (bootstrap_options.is_a?(Hash) || bootstrap_options.is_a?(Cheffish::MergedConfig)) &&
+          bootstrap_options.has_key?(:ipsettings)
           bootstrap_options = bootstrap_options[:ipsettings]
           if bootstrap_options.has_key?(:ip)
             return true
@@ -465,7 +467,7 @@ module ChefProvisioningVsphere
         (machine_options[:start_timeout] || 600) -
           (Time.now.utc - Time.parse(machine_spec.location['started_at']))
       else
-        (machine_options[:create_timeout] || 600) - 
+        (machine_options[:create_timeout] || 600) -
          (Time.now.utc - Time.parse(machine_spec.location['allocated_at']))
       end
     end
@@ -475,7 +477,7 @@ module ChefProvisioningVsphere
         if action_handler.should_perform_actions
           action_handler.report_progress "waiting for #{machine_spec.name} (#{vm.config.instanceUuid} on #{driver_url}) to be ready ..."
           until remaining_wait_time(machine_spec, machine_options) < 0 ||
-            (vm.guest.toolsRunningStatus == "guestToolsRunning" && !vm.guest.ipAddress.nil? && vm.guest.ipAddress.length > 0) do
+            (vm.guest.toolsRunningStatus == "guestToolsRunning" && vm.guest.ipAddress && (!machine_options[:ipv4_only] || IPAddr.new(vm.guest.ipAddress).ipv4?)) do
             print "."
             sleep 5
           end
@@ -511,12 +513,12 @@ module ChefProvisioningVsphere
       additional_disk_size_gb = bootstrap_options[:additional_disk_size_gb]
       if !additional_disk_size_gb.is_a?(Array)
         additional_disk_size_gb = [additional_disk_size_gb]
-      end        
+      end
 
       additional_disk_size_gb.each do |size|
         size = size.to_i
         next if size == 0
-        if bootstrap_options[:datastore].to_s.empty? 
+        if bootstrap_options[:datastore].to_s.empty?
           raise ':datastore must be specified when adding a disk to a cloned vm'
         end
         task = vm.ReconfigVM_Task(
@@ -538,7 +540,7 @@ module ChefProvisioningVsphere
 
     def vsphere_helper
       @vsphere_helper ||= VsphereHelper.new(
-        connect_options, 
+        connect_options,
         config[:machine_options][:bootstrap_options][:datacenter]
       )
     end
@@ -556,11 +558,11 @@ module ChefProvisioningVsphere
       end
 
       transport = transport_for(
-        machine_spec, 
+        machine_spec,
         machine_options[:bootstrap_options][:ssh]
       )
       strategy = convergence_strategy_for(machine_spec, machine_options)
-      
+
       if machine_spec.location['is_windows']
         Chef::Provisioning::Machine::WindowsMachine.new(
           machine_spec, transport, strategy)
@@ -620,8 +622,8 @@ module ChefProvisioningVsphere
     end
 
     def transport_for(
-      machine_spec, 
-      remoting_options, 
+      machine_spec,
+      remoting_options,
       ip = machine_spec.location['ipaddress']
     )
       if machine_spec.location['is_windows']
@@ -641,7 +643,7 @@ module ChefProvisioningVsphere
       }
 
       Chef::Provisioning::Transport::WinRM.new(
-        "http://#{host}:5985/wsman",
+        URI::HTTP.build(:host => host, :port => 5985, :path => '/wsman').to_s,
         :plaintext,
         winrm_options,
         config
