@@ -484,7 +484,7 @@ module ChefProvisioningVsphere
         if action_handler.should_perform_actions
           action_handler.report_progress "waiting for #{machine_spec.name} (#{vm.config.instanceUuid} on #{driver_url}) to be ready ..."
           until remaining_wait_time(machine_spec, machine_options) < 0 ||
-            (vm.guest.toolsRunningStatus == "guestToolsRunning" && vm.guest.ipAddress && (!machine_options[:ipv4_only] || IPAddr.new(vm.guest.ipAddress).ipv4?)) do
+            (vm.guest.toolsRunningStatus == "guestToolsRunning" && vm.guest.ipAddress && !vm.guest.ipAddress.empty?) do
             print "."
             sleep 5
           end

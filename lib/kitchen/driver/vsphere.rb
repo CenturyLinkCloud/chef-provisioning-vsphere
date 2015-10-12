@@ -14,7 +14,6 @@ module Kitchen
         :create_timeout => 600,
         :stop_timeout => 600,
         :ready_timeout => 90,
-        :ipv4_only => false,
         :bootstrap_options => {
           :use_linked_clone => true,
           :ssh => {

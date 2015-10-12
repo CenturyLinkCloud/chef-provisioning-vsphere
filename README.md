@@ -111,10 +111,6 @@ These are settings set at the root of `machine_options`. Chances are the default
 - `create_timeout` - number of seconds to wait for a machine to be accessible after initiating provisioning (default 10 minutes)
 - `ready_timeout` - number of seconds to wait for customization to complete and vmware tools to come on line (default 5 minutes)
 
-## Other options
-
-- `ipv4_only` - whether a VM must have an IPv4 address before being considered ready. Default value: false
-
 ## More config examples
 
 ### Static IP and two additional disks of 20 and 50GB
@@ -244,7 +240,6 @@ driver_config:
     start_timeout: 600
     create_timeout: 600
     ready_timeout: 90
-    ipv4_only: false
     bootstrap_options:
       use_linked_clone: true
       datacenter: 'DC'
