@@ -325,10 +325,16 @@ module ChefProvisioningVsphere
 
     def wait_for_domain(bootstrap_options, vm, machine_spec, action_handler)
       return unless bootstrap_options[:customization_spec]
-      return unless bootstrap_options[:customization_spec].is_a?(Hash) || bootstrap_options[:customization_spec].is_a?(Cheffish::MergedConfig)
-      return unless bootstrap_options[:customization_spec][:domain]
 
-      domain = bootstrap_options[:customization_spec][:domain]
+      domain = if bootstrap_options[:customization_spec].is_a?(String) && is_windows?(vm)
+        spec = vsphere_helper.find_customization_spec(bootstrap_options[:customization_spec])
+        spec.identity.identification.joinDomain
+      else
+        bootstrap_options[:customization_spec][:domain]
+      end
+
+      return unless domain
+
       if is_windows?(vm) && domain != 'local'
         start = Time.now.utc
         trimmed_name = machine_spec.name.byteslice(0,15)
@@ -451,12 +457,13 @@ module ChefProvisioningVsphere
     def has_static_ip(bootstrap_options)
       if bootstrap_options.has_key?(:customization_spec)
         bootstrap_options = bootstrap_options[:customization_spec]
-        if (bootstrap_options.is_a?(Hash) || bootstrap_options.is_a?(Cheffish::MergedConfig)) &&
-          bootstrap_options.has_key?(:ipsettings)
+
+        if bootstrap_options.is_a?(String)
+          spec = vsphere_helper.find_customization_spec(bootstrap_options)
+          return spec.nicSettingMap[0].adapter.ip.is_a?(RbVmomi::VIM::CustomizationFixedIp)
+        elsif bootstrap_options.has_key?(:ipsettings)
           bootstrap_options = bootstrap_options[:ipsettings]
-          if bootstrap_options.has_key?(:ip)
-            return true
-          end
+          return bootstrap_options.has_key?(:ip)
         end
       end
       false
@@ -664,9 +671,14 @@ module ChefProvisioningVsphere
 
     def ip_to_bootstrap(bootstrap_options, vm)
       if has_static_ip(bootstrap_options)
-        bootstrap_options[:customization_spec][:ipsettings][:ip]
+        if bootstrap_options[:customization_spec].is_a?(String)
+          spec = vsphere_helper.find_customization_spec(bootstrap_options[:customization_spec])
+          spec.nicSettingMap[0].adapter.ip.ipAddress
+        else
+          bootstrap_options[:customization_spec][:ipsettings][:ip]
+        end
       else
-          vm.guest.ipAddress
+        vm.guest.ipAddress
       end
     end
   end
