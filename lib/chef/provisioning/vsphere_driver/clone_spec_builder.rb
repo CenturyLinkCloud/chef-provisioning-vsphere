@@ -160,12 +160,20 @@ module ChefProvisioningVsphere
 
     def windows_prep_for(options, vm_name)
       cust_options = options[:customization_spec]
+      command_list =
+        case cust_options[:run_once].nil?
+        when true
+          [
+            'winrm set winrm/config/client/auth @{Basic="true"}',
+            'winrm set winrm/config/service/auth @{Basic="true"}',
+            'winrm set winrm/config/service @{AllowUnencrypted="true"}',
+            'shutdown -l'
+          ]
+        else
+          cust_options[:run_once]
+        end
       cust_runonce = RbVmomi::VIM::CustomizationGuiRunOnce.new(
-        :commandList => [
-          'winrm set winrm/config/client/auth @{Basic="true"}',
-          'winrm set winrm/config/service/auth @{Basic="true"}',
-          'winrm set winrm/config/service @{AllowUnencrypted="true"}',
-          'shutdown -l'])
+        :commandList => command_list)
 
       cust_login_password = RbVmomi::VIM::CustomizationPassword(
         :plainText => true,

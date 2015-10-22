@@ -633,16 +633,25 @@ module ChefProvisioningVsphere
 
     def create_winrm_transport(host, options)
       require 'chef/provisioning/transport/winrm'
-      opt = options[:user].include?("\\") ? :disable_sspi : :basic_auth_only
+      port = options[:port].nil? ? '5985' : options[:port]
+      winrm_transport =
+        options[:transport].nil? ? :plaintext : options[:transport].to_sym
       winrm_options = {
         user: "#{options[:user]}",
-        pass: options[:password],
-        opt => true
+        pass: options[:password]
       }
+      if options[:winrm_opts].nil?
+        opt = options[:user].include?("\\") ? :disable_sspi : :basic_auth_only
+        winrm_options.merge!(opt => true)
+      else
+        winrm_options.merge!(options[:winrm_opts])
+      end
+      endpoint = "http#{winrm_transport == :ssl ? 's' : ''}://"\
+                 "#{host}:#{port}/wsman"
 
       Chef::Provisioning::Transport::WinRM.new(
-        "http://#{host}:5985/wsman",
-        :plaintext,
+        endpoint,
+        winrm_transport,
         winrm_options,
         config
       )
