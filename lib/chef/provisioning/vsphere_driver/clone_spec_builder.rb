@@ -160,6 +160,8 @@ module ChefProvisioningVsphere
 
     def windows_prep_for(options, vm_name)
       cust_options = options[:customization_spec]
+      Chef::Log.warn('Using default insecure WinRM setup commands') if
+        cust_options[:run_once].nil?
       command_list =
         case cust_options[:run_once].nil?
         when true
