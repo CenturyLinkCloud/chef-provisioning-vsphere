@@ -360,7 +360,7 @@ module ChefProvisioningVsphere
           connectable = transport_for(
             machine_spec,
             machine_options[:bootstrap_options][:ssh],
-            ip
+            vm_ip
           ).available?
         end
         sleep 5
