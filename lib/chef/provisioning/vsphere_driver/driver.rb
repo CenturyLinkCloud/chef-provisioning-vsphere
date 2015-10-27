@@ -314,7 +314,7 @@ module ChefProvisioningVsphere
           msg << ' and tools state is '
           msg << vm.guest.toolsRunningStatus
           msg << '. powering up server...'
-          action_handler.report_progress(msg.join)
+          action_handler.report_progress(msg)
           vsphere_helper.start_vm(vm)
         else
           restart_server(action_handler, machine_spec, machine_options)
