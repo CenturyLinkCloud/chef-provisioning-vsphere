@@ -329,6 +329,9 @@ module ChefProvisioningVsphere
       domain = if bootstrap_options[:customization_spec].is_a?(String) && is_windows?(vm)
         spec = vsphere_helper.find_customization_spec(bootstrap_options[:customization_spec])
         spec.identity.identification.joinDomain
+      elsif bootstrap_options[:customization_spec].is_a?(String) && !is_windows?(vm)
+        spec = vsphere_helper.find_customization_spec(bootstrap_options[:customization_spec])
+        spec.identity.domain
       else
         bootstrap_options[:customization_spec][:domain]
       end
