@@ -304,7 +304,7 @@ module ChefProvisioningVsphere
     def attempt_ip(machine_options, action_handler, vm, machine_spec)
       vm_ip = ip_to_bootstrap(machine_options[:bootstrap_options], vm)
       
-      wait_for_ip(vm, machine_options, action_handler)
+      wait_for_ip(vm, machine_options, machine_spec, action_handler)
 
       unless has_ip?(vm_ip, vm)
         action_handler.report_progress "rebooting..."
@@ -319,7 +319,7 @@ module ChefProvisioningVsphere
         else
           restart_server(action_handler, machine_spec, machine_options)
         end
-        wait_for_ip(vm, machine_options, action_handler)
+        wait_for_ip(vm, machine_options, machine_spec, action_handler)
       end
     end
 
@@ -342,7 +342,7 @@ module ChefProvisioningVsphere
       end
     end
 
-    def wait_for_ip(vm, machine_options, action_handler)
+    def wait_for_ip(vm, machine_options, machine_spec, action_handler)
       bootstrap_options = machine_options[:bootstrap_options]
       vm_ip = ip_to_bootstrap(bootstrap_options, vm)
       ready_timeout = machine_options[:ready_timeout] || 300
@@ -351,10 +351,18 @@ module ChefProvisioningVsphere
       action_handler.report_progress msg
 
       start = Time.now.utc
-      until (Time.now.utc - start) > ready_timeout || has_ip?(vm_ip, vm) do
+      connectable = false
+      until (Time.now.utc - start) > ready_timeout || connectable do
         action_handler.report_progress(
           "IP addresses found: #{all_ips_for(vm)}")
         vm_ip ||= ip_to_bootstrap(bootstrap_options, vm)
+        if has_ip?(vm_ip, vm)
+          connectable = transport_for(
+            machine_spec,
+            machine_options[:bootstrap_options][:ssh],
+            vm_ip
+          ).available?
+        end
         sleep 5
       end
     end
