@@ -662,7 +662,7 @@ module ChefProvisioningVsphere
       Chef::Provisioning::Transport::SSH.new(
         host,
         ssh_user,
-        options,
+        options.to_hash,
         @config[:machine_options][:sudo] ? {:prefix => 'sudo '} : {},
         config
       )
