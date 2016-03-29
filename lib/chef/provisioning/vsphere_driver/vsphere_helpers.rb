@@ -92,7 +92,7 @@ module ChefProvisioningVsphere
         :startConnected => true)
       device = RbVmomi::VIM::VirtualVmxnet3(
         :backing => backing_info,
-        :deviceInfo => RbVmomi::VIM::Description(:label => network_label, :summary => network_name.split('/').last),
+        :deviceInfo => RbVmomi::VIM::Description(:label => network_label, :summary => get_network_name(network_name)),
         :key => device_key,
         :connectable => connectable)
       RbVmomi::VIM::VirtualDeviceConfigSpec(
@@ -216,7 +216,7 @@ module ChefProvisioningVsphere
           :port => port)
       else
         RbVmomi::VIM::VirtualEthernetCardNetworkBackingInfo(
-          deviceName: network_name.split('/').last)
+          deviceName: get_network_name(network_name))
       end
     end
 
@@ -288,8 +288,24 @@ module ChefProvisioningVsphere
 
     def find_network(name)
       base = datacenter.networkFolder
+      cidr = name[-3..-1].match('/\d{2}')
+      i = 0
+
+      if cidr
+        # if the network name contains the subnet mask in CIDR notation (i.e. ends in /24)
+        # then remove this from the network name before splitting the string on '/' into an array
+        # and add it back in on the last iteration of the .each loop to search for the network name
+        name = name[0..-4]
+      end
+
       entity_array = name.split('/').reject(&:empty?)
+      count = entity_array.length
+
       entity_array.each do |item|
+        i += 1
+        # Add the CIDR mask
+        item.concat(cidr.to_s) if i == count && !cidr.to_s.nil?
+
         case base
         when RbVmomi::VIM::Folder
           base = base.find(item)
@@ -336,6 +352,25 @@ module ChefProvisioningVsphere
         unless res.kind_of?(Net::HTTPSuccess)
           raise "Error: #{res.inspect} :: #{res.body} :: sending #{local} to #{remote} at #{vm.name} via #{endpoint} with a size of #{size}"
         end
+    end
+
+    def get_network_name(name)
+      count = name.count('/')
+      cidr = name[-3..-1].match('/\d{2}')
+
+      if cidr
+        # if the network name contains the subnet mask in CIDR notation (i.e. ends in /24)
+        if count == 1
+          network_name = name
+        else
+          network_name = name[0..-4].split('/').last
+          network_name.concat(cidr.to_s)
+        end
+
+      else
+        network_name = name.split('/').last
+      end
+      network_name
     end
   end
 end
