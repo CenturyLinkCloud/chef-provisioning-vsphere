@@ -93,33 +93,60 @@ module ChefProvisioningVsphere
           cust_domain = cust_options[:domain]
 
           raise ArgumentError, 'domain is required' unless cust_domain
-          cust_ip_settings = nil
-          if ip_settings && ip_settings.key?(:ip)
-            unless cust_options[:ipsettings].key?(:subnetMask)
-              raise ArgumentError, 'subnetMask is required for static ip'
+
+          cust_adapter_mapping = []
+
+          # identify all IP addresses, use dhcp as the default
+          ip_list = ['dhcp']
+          if ip_settings
+            if ip_settings.key?(:ip)
+              ip_list = [*ip_settings[:ip]]
             end
-            cust_ip_settings = RbVmomi::VIM::CustomizationIPSettings.new(
-              ip_settings)
-            action_handler.report_progress "customizing #{vm_name} \
-              with static IP #{ip_settings[:ip]}"
-            cust_ip_settings.ip = RbVmomi::VIM::CustomizationFixedIp(
-              :ipAddress => ip_settings[:ip])
-          end
-          if cust_ip_settings.nil?
-            cust_ip_settings= RbVmomi::VIM::CustomizationIPSettings.new(
-              :ip => RbVmomi::VIM::CustomizationDhcpIpGenerator.new())
           end
 
-          if ip_settings && ip_settings.key?(:dnsServerList)
-            cust_ip_settings.dnsServerList = ip_settings[:dnsServerList]
-            action_handler.report_progress "customizing #{vm_name} with /
-              dynamic IP and DNS: #{ip_settings[:dnsServerList]}"
+          ip_list.each do |addr|
+
+            if addr == 'dhcp'
+              cust_ip_settings= RbVmomi::VIM::CustomizationIPSettings.new(
+                :ip => RbVmomi::VIM::CustomizationDhcpIpGenerator.new())
+            else
+              unless ip_settings.key?(:subnetMask)
+                raise ArgumentError, 'subnetMask is required for static ip'
+              end
+              # TODO: should we remove gateway when it doesn't match the subnet mask?
+              cust_ip_settings = RbVmomi::VIM::CustomizationIPSettings.new()
+
+              action_handler.report_progress "customizing #{vm_name} \
+                with static IP #{addr}"
+              cust_ip_settings.ip = RbVmomi::VIM::CustomizationFixedIp(
+                :ipAddress => addr)
+              # add subnet mask (guaranteed to have one)
+              cust_ip_settings[:subnetMask] = ip_settings[:subnetMask]
+              # add gateway to first ip address only
+              # probably not strictly correct, but mimics knife vsphere code
+              if cust_options[:ipsettings].key?(:gateway) && cust_adapter_mapping.empty?
+                cust_ip_settings[:gateway] = cust_options[:ipsettings][:gateway]
+              end
+            end
+
+            # Configure domain/DNS settings
+            cust_ip_settings.dnsDomain = cust_domain
+            if ip_settings && ip_settings.key?(:dnsServerList)
+              cust_ip_settings.dnsServerList = ip_settings[:dnsServerList]
+              action_handler.report_progress "customizing #{vm_name} with /
+                dynamic IP and DNS: #{ip_settings[:dnsServerList]}"
+            end
+
+            cust_adapter_mapping.push(RbVmomi::VIM::CustomizationAdapterMapping.new(:adapter => cust_ip_settings))
+
           end
 
-          cust_ip_settings.dnsDomain = cust_domain
           global_ip_settings = RbVmomi::VIM::CustomizationGlobalIPSettings.new
-          global_ip_settings.dnsServerList = cust_ip_settings.dnsServerList
           global_ip_settings.dnsSuffixList = [cust_domain]
+          if ip_settings && ip_settings.key?(:dnsServerList)
+            global_ip_settings.dnsServerList = ip_settings[:dnsServerList]
+          end
+
           cust_hostname = hostname_from(cust_options, vm_name)
           cust_hwclockutc = cust_options[:hw_clock_utc]
           cust_timezone = cust_options[:time_zone]
@@ -134,10 +161,7 @@ module ChefProvisioningVsphere
               :timeZone => cust_timezone
             )
           end
-          cust_adapter_mapping = [
-            RbVmomi::VIM::CustomizationAdapterMapping.new(
-              :adapter => cust_ip_settings)
-          ]
+
           RbVmomi::VIM::CustomizationSpec.new(
             :identity => cust_prep,
             :globalIPSettings => global_ip_settings,

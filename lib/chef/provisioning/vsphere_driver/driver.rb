@@ -457,11 +457,16 @@ module ChefProvisioningVsphere
 
     def has_static_ip(bootstrap_options)
       if bootstrap_options.has_key?(:customization_spec)
-        bootstrap_options = bootstrap_options[:customization_spec]
-        if bootstrap_options.has_key?(:ipsettings)
-          bootstrap_options = bootstrap_options[:ipsettings]
-          if bootstrap_options.has_key?(:ip)
-            return true
+        spec = bootstrap_options[:customization_spec]
+        if spec.has_key?(:ipsettings)
+          ipsettings = spec[:ipsettings]
+          if ipsettings.has_key?(:ip)
+            ips = [*ipsettings[:ip]]
+            ips.each do |addr|
+              if addr != 'dhcp'
+                return true
+              end
+            end
           end
         end
       end
@@ -670,9 +675,14 @@ module ChefProvisioningVsphere
 
     def ip_to_bootstrap(bootstrap_options, vm)
       if has_static_ip(bootstrap_options)
-        bootstrap_options[:customization_spec][:ipsettings][:ip]
+        ips = [*bootstrap_options[:customization_spec][:ipsettings][:ip]]
+	ips.each do |addr|
+	  if addr != 'dhcp'
+	    return addr
+	  end
+        end
       else
-          vm.guest.ipAddress
+        vm.guest.ipAddress
       end
     end
   end
