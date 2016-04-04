@@ -229,8 +229,8 @@ end
 This chef-provisioning-driver comes with a test-kitchen driver. Here are example driver options you can add to your `kitchen.yml`.
 
 ```
-driver_plugin: vsphere
-driver_config:
+driver:
+  name: vsphere
   driver_options:
     host: '1.2.3.5'
     user: 'user'
