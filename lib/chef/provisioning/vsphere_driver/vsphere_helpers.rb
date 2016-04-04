@@ -372,5 +372,27 @@ module ChefProvisioningVsphere
       end
       network_name
     end
+
+    def mount_iso(vm, datastore, isofile)
+      cdrom_obj = vm.config.hardware.device.find { |hw| hw.class == RbVmomi::VIM::VirtualCdrom }
+      machine_conf_spec = RbVmomi::VIM::VirtualMachineConfigSpec(
+        deviceChange: [{
+          operation: :edit,
+          device: RbVmomi::VIM::VirtualCdrom(
+            backing: RbVmomi::VIM::VirtualCdromIsoBackingInfo(
+              fileName: "[#{datastore}] #{isofile}"
+            ),
+            key: cdrom_obj.key,
+            controllerKey: cdrom_obj.controllerKey,
+            connectable: RbVmomi::VIM::VirtualDeviceConnectInfo(
+              startConnected: false || false,
+              connected: true || false,
+              allowGuestControl: true
+            )
+          )
+        }]
+      )
+      vm.ReconfigVM_Task(spec: machine_conf_spec).wait_for_completion
+    end
   end
 end
