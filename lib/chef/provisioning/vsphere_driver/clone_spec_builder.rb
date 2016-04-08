@@ -96,8 +96,8 @@ module ChefProvisioningVsphere
 
           cust_adapter_mapping = []
 
-          # identify all IP addresses, use dhcp as the default
-          ip_list = ['dhcp']
+          # identify all IP addresses, use dhcp (nil) as the default
+          ip_list = [nil]
           if ip_settings
             if ip_settings.key?(:ip)
               ip_list = [*ip_settings[:ip]]
@@ -106,7 +106,7 @@ module ChefProvisioningVsphere
 
           ip_list.each do |addr|
 
-            if addr == 'dhcp'
+            if addr == nil
               cust_ip_settings= RbVmomi::VIM::CustomizationIPSettings.new(
                 :ip => RbVmomi::VIM::CustomizationDhcpIpGenerator.new())
             else
