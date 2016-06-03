@@ -17,6 +17,7 @@ module ChefProvisioningVsphere
 
     def vim
       if @current_connection.nil? or @current_connection.serviceContent.sessionManager.currentSession.nil?
+        @datacenter = nil
         puts "establishing connection to #{connect_options[:host]}"
         @current_connection = RbVmomi::VIM.connect connect_options
         str_conn = @current_connection.pretty_inspect # a string in the format of VIM(host ip)
@@ -81,6 +82,7 @@ module ChefProvisioningVsphere
     end
 
     def datacenter
+      vim # ensure connection is valid
       @datacenter ||= vim.serviceInstance.find_datacenter(datacenter_name) ||
         raise("vSphere Datacenter not found [#{datacenter_name}]")
     end
