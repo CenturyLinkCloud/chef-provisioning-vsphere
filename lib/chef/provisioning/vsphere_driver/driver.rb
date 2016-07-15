@@ -521,18 +521,27 @@ module ChefProvisioningVsphere
         additional_disk_size_gb = [additional_disk_size_gb]
       end        
 
-      additional_disk_size_gb.each do |size|
+      additional_disk_size_gb.each.with_index do |size, index|
         size = size.to_i
         next if size == 0
-        if bootstrap_options[:datastore].to_s.empty? 
-          raise ':datastore must be specified when adding a disk to a cloned vm'
+
+        # Use additional_datastore as destination if defined, else default datastore
+        if bootstrap_options[:additional_datastore].nil? || bootstrap_options[:additional_datastore][index].to_s.empty?
+          dist_datastore = bootstrap_options[:datastore].to_s
+        else
+          dist_datastore = bootstrap_options[:additional_datastore][index].to_s
         end
+
+        if dist_datastore.empty?
+          raise ':datastore or :additional_datastore must be specified when adding a disk to a cloned vm'
+        end
+
         task = vm.ReconfigVM_Task(
           spec: RbVmomi::VIM.VirtualMachineConfigSpec(
             deviceChange: [
               vsphere_helper.virtual_disk_for(
                 vm,
-                bootstrap_options[:datastore],
+                dist_datastore,
                 size
               )
             ]
