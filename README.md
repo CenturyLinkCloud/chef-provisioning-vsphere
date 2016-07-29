@@ -101,9 +101,9 @@ This will use chef-zero and needs no chef server (only works for ssh). Note that
 - `[:customization_spec][:hostname]` - hostname to use. Defaults to machine resource name if not provided
 - `[:customization_spec][:org_name]` - org name used in sysprep on windows
 - `[:customization_spec][:product_id]` - windows product key
-- `[:customization_spec][:run_once]` - commands for vSphere to run at the end of windows bootstrapping; set this to your own array to override the [default winrm setup options](http://www.rubydoc.info/gems/chef-provisioning-vsphere/ChefProvisioningVsphere%2FHelpers%3Awindows_prep_for)
+- `[:customization_spec][:run_once]` - Array of commands for vSphere to run at the end of windows bootstrapping
 - `[:customization_spec][:time_zone]` - The case-sensitive timezone, such as Europe/Sofia based on the tz (timezone) database used by Linux and other Unix systems
-- `[:customization_spec][:transport]` - winrm transport to use. Defaults to `plaintext`
+- `[:customization_spec][:winrm_transport]` - winrm transport to use. Defaults to `negotiate`
 - `[:customization_spec][:win_time_zone]` - numeric time zone for windows
 - `[:customization_spec][:winrm_opts]` - Optional hash of [winrm options](https://github.com/WinRb/WinRM) (e.g. `disable_sspi: true`)
 

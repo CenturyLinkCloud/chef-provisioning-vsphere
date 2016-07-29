@@ -22,6 +22,7 @@ Gem::Specification.new do |s|
 
   s.add_dependency 'rbvmomi', '~> 1.8.0', '>= 1.8.2'
   s.add_dependency 'chef-provisioning', '~>1.1'
+  s.add_dependency 'winrm', '~> 1.6'
 
   s.add_development_dependency 'rspec'
   s.add_development_dependency 'rake'

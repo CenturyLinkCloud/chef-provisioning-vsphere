@@ -641,9 +641,9 @@ module ChefProvisioningVsphere
 
     def create_winrm_transport(host, options)
       require 'chef/provisioning/transport/winrm'
-      port = options[:port].nil? ? '5985' : options[:port]
       winrm_transport =
-        options[:transport].nil? ? :plaintext : options[:transport].to_sym
+        options[:winrm_transport].nil? ? :negotiate : options[:winrm_transport].to_sym
+      port = options[:port] || winrm_transport == :ssl ? '5986' : '5985'
       winrm_options = {
         user: "#{options[:user]}",
         pass: options[:password]
