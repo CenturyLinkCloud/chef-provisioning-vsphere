@@ -94,7 +94,7 @@ describe 'vsphere_driver' do
     end
     it 'is in the correct host' do
       if @metal_config[:machine_options][:bootstrap_options].has_key?(:host)
-        expect(@vm.runtime.host.name).to eq(@metal_config[:machine_options][:bootstrap_options][:host].split('/')[1])
+        expect(@vm.runtime.host.name).to eq(@metal_config[:machine_options][:bootstrap_options][:host].split('/').last)
       end
     end
     it 'is in the correct cluster' do
