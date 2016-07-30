@@ -85,6 +85,7 @@ This will use chef-zero and needs no chef server (only works for ssh). Note that
 - `[:host]` - `{cluster}`/`{host}` to use during provisioning
 - `[:resource_pool]` - `{cluster}`/`{resource pool}` to use during provisioning
 - `[:additional_disk_size_gb]` - an array of numbers, each signifying the number of gigabytes to assign to an additional disk (*his requires a datastore to be specified*)
+- `[:additional_datastore]` - optional array of datastore names to put the additional disks. ( will use the default datastore, if not defined)
 - `[:ssh][:user]` user to use for ssh/winrm (defaults to root on linux/administrator on windows)
 - `[:ssh][:password]` - password to use for ssh/winrm
 - `[:ssh][:paranoid]` - specifies the strictness of the host key verification checking
@@ -143,6 +144,23 @@ with_machine_options :bootstrap_options => {
     :password => 'password',
     :paranoid => false,
   }
+}
+```
+
+### Add two additional disks, with one at a different datastore
+
+```
+with_machine_options :bootstrap_options => {
+  use_linked_clone: true,
+  num_cpus: 2,
+  memory_mb: 4096,
+  network_name: ["vlan_20_172.21.20"],
+  datacenter: 'datacenter_name',
+  resource_pool: 'cluster',
+  template_name: 'path to template',
+  datastore: "my_data_store",
+  additional_disk_size_gb: [10,20],
+  additional_datastore: ['', 'another_data_store']
 }
 ```
 
