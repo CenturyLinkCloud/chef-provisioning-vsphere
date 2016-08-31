@@ -186,7 +186,11 @@ module ChefProvisioningVsphere
     def full_description(machine_spec, bootstrap_options)
       description = [ "creating machine #{machine_spec.name} on #{driver_url}" ]
       bootstrap_options.to_hash.each_pair do |key,value|
-        description << "  #{key}: #{value.inspect}"
+	if value.is_a?(Hash) then
+          temp_value = value.clone
+          temp_value[:password] = "*********" if value.has_key?(:password)
+        end
+        description << "  #{key}: #{temp_value.inspect}"
       end
       description
     end
