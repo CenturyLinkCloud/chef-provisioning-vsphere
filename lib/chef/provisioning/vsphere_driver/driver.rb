@@ -46,7 +46,7 @@ module ChefProvisioningVsphere
       super(driver_url, config)
 
       uri = URI(driver_url)
-      @connect_options = { 
+      @connect_options = {
         provider: 'vsphere',
         host: uri.host,
         port: uri.port,
@@ -131,7 +131,7 @@ module ChefProvisioningVsphere
 
       action_handler.report_progress full_description(
         machine_spec, bootstrap_options)
-      
+
       vm = find_or_create_vm(bootstrap_options, machine_spec, action_handler)
 
       add_machine_spec_location(vm, machine_spec)
@@ -189,6 +189,8 @@ module ChefProvisioningVsphere
 	if value.is_a?(Hash) then
           temp_value = value.clone
           temp_value[:password] = "*********" if value.has_key?(:password)
+        else
+          temp_value = value
         end
         description << "  #{key}: #{temp_value.inspect}"
       end
@@ -262,7 +264,7 @@ module ChefProvisioningVsphere
       # This may just be the ip of a newly cloned machine
       # Customization below may change this to a valid ip
       wait_until_ready(action_handler, machine_spec, machine_options, vm)
-      
+
       if !machine_spec.location['ipaddress'] || !has_ip?(machine_spec.location['ipaddress'], vm)
         # find the ip we actually want
         # this will be the static ip to assign
@@ -307,7 +309,7 @@ module ChefProvisioningVsphere
 
     def attempt_ip(machine_options, action_handler, vm, machine_spec)
       vm_ip = ip_to_bootstrap(machine_options[:bootstrap_options], vm)
-      
+
       wait_for_ip(vm, machine_options, action_handler)
 
       unless has_ip?(vm_ip, vm)
@@ -469,7 +471,7 @@ module ChefProvisioningVsphere
         (machine_options[:start_timeout] || 600) -
           (Time.now.utc - Time.parse(machine_spec.location['started_at']))
       else
-        (machine_options[:create_timeout] || 600) - 
+        (machine_options[:create_timeout] || 600) -
          (Time.now.utc - Time.parse(machine_spec.location['allocated_at']))
       end
     end
@@ -515,12 +517,12 @@ module ChefProvisioningVsphere
       additional_disk_size_gb = bootstrap_options[:additional_disk_size_gb]
       if !additional_disk_size_gb.is_a?(Array)
         additional_disk_size_gb = [additional_disk_size_gb]
-      end        
+      end
 
       additional_disk_size_gb.each do |size|
         size = size.to_i
         next if size == 0
-        if bootstrap_options[:datastore].to_s.empty? 
+        if bootstrap_options[:datastore].to_s.empty?
           raise ':datastore must be specified when adding a disk to a cloned vm'
         end
         task = vm.ReconfigVM_Task(
@@ -542,7 +544,7 @@ module ChefProvisioningVsphere
 
     def vsphere_helper
       @vsphere_helper ||= VsphereHelper.new(
-        connect_options, 
+        connect_options,
         config[:machine_options][:bootstrap_options][:datacenter]
       )
     end
@@ -560,11 +562,11 @@ module ChefProvisioningVsphere
       end
 
       transport = transport_for(
-        machine_spec, 
+        machine_spec,
         machine_options[:bootstrap_options][:ssh]
       )
       strategy = convergence_strategy_for(machine_spec, machine_options)
-      
+
       if machine_spec.location['is_windows']
         Chef::Provisioning::Machine::WindowsMachine.new(
           machine_spec, transport, strategy)
@@ -624,8 +626,8 @@ module ChefProvisioningVsphere
     end
 
     def transport_for(
-      machine_spec, 
-      remoting_options, 
+      machine_spec,
+      remoting_options,
       ip = machine_spec.location['ipaddress']
     )
       if machine_spec.location['is_windows']
