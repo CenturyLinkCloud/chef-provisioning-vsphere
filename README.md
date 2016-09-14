@@ -84,13 +84,13 @@ This will use chef-zero and needs no chef server (only works for ssh). Note that
 - `[:memory_mb]` - number of megabytes to allocate for machine
 - `[:host]` - `{cluster}`/`{host}` to use during provisioning
 - `[:resource_pool]` - `{cluster}`/`{resource pool}` to use during provisioning
-- `[:additional_disk_size_gb]` - an array of numbers, each signifying the number of gigabytes to assign to an additional disk (*his requires a datastore to be specified*)
+- `[:additional_disk_size_gb]` - an array of numbers, each signifying the number of gigabytes to assign to an additional disk (*this requires a datastore to be specified*)
 - `[:ssh][:user]` user to use for ssh/winrm (defaults to root on linux/administrator on windows)
 - `[:ssh][:password]` - password to use for ssh/winrm
 - `[:ssh][:paranoid]` - specifies the strictness of the host key verification checking
 - `[:ssh][:port]` port to use for ssh/winrm (defaults to 22 for ssh or 5985 for winrm)
-- `[:convergence_options][:install_msi_url]` - url to chef client msi to use (defaults to latest) 
-- `[:convergence_options][:install_sh_url]` - the bach script to install chef client on linux (defaults to latest)
+- `[:convergence_options][:install_msi_url]` - url to chef client msi to use (defaults to latest)
+- `[:convergence_options][:install_sh_url]` - the bash script to install chef client on linux (defaults to latest)
 - `[:customization_spec][:ipsettings][:ip]` static ip to assign to machine
 - `[:customization_spec][:ipsettings][:subnetMask]` - subnet to use
 - `[:customization_spec][:ipsettings][:gateway]` - array of possible gateways to use (this will most often be an array of 1)

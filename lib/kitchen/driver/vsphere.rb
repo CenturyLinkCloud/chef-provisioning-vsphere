@@ -32,7 +32,7 @@ module Kitchen
       end
 
       def create(state)
-        state[:vsphere_name] = config[:vsphere_name] 
+        state[:vsphere_name] = config[:vsphere_name]
         state[:username] = config[:machine_options][:bootstrap_options][:ssh][:user]
         state[:password] = config[:machine_options][:bootstrap_options][:ssh][:password]
         config[:server_name] = state[:vsphere_name]
