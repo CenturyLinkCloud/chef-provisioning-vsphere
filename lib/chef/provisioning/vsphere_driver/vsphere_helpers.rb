@@ -83,8 +83,14 @@ module ChefProvisioningVsphere
 
     def datacenter
       vim # ensure connection is valid
-      @datacenter ||= vim.serviceInstance.find_datacenter(datacenter_name) ||
-        raise("vSphere Datacenter not found [#{datacenter_name}]")
+      @datacenter ||= begin
+        rootFolder = vim.serviceInstance.content.rootFolder
+        dc = rootFolder.childEntity.grep(RbVmomi::VIM::Datacenter).find do |x|
+          x.name == datacenter_name
+        end
+        raise("vSphere Datacenter not found [#{datacenter_name}]") if dc.nil?
+        dc
+      end
     end
 
     def network_adapter_for(operation, network_name, network_label, device_key, backing_info)
