@@ -7,13 +7,13 @@ chef-provisioning-vsphere supports provisioning Unix/ssh and Windows/winrm guest
 
 ## Prerequisites
 
-### Vsphere infrastructure
+### vSphere infrastructure
 
-A vcenter and valid login credentials.
+A vCenter and valid login credentials.
 
 ### VM Template
 
-A VM template capable of installing Chef 11.8 or newer. This can be either windows or linux flavored.
+A VM template capable of installing Chef 11.8 or newer. This can be either Windows or linux flavored.
 
 ### A provisioning node (can be local)
 
@@ -74,8 +74,8 @@ This will use chef-zero and needs no chef server (only works for ssh). Note that
 ## Supported machine bootstrapping options
 
 - `[:use_linked_clone]` - (true/false) great for testing but not recommended for production.
-- `[:datacenter]` - Name of vsphere datacenter (*required*)
-- `[:template_name]` - path to vmware template (can be template or a shutown vm) (*required*)
+- `[:datacenter]` - Name of vSphere datacenter (*required*)
+- `[:template_name]` - path to VMware template (can be template or a shutdown vm) (*required*)
 - `[:template_folder]` - path to a folder containing the template (do not use if template is in the root vm folder)
 - `[:vm_folder]` - path to a folder where the machine will be created.
 - `[:datastore]` - name of datastore to use
@@ -85,7 +85,7 @@ This will use chef-zero and needs no chef server (only works for ssh). Note that
 - `[:host]` - `{cluster}`/`{host}` to use during provisioning
 - `[:resource_pool]` - `{cluster}`/`{resource pool}` to use during provisioning
 - `[:additional_disk_size_gb]` - an array of numbers, each signifying the number of gigabytes to assign to an additional disk (*this requires a datastore to be specified*)
-- `[:ssh][:user]` user to use for ssh/winrm (defaults to root on linux/administrator on windows)
+- `[:ssh][:user]` user to use for ssh/winrm (defaults to root on linux/administrator on Windows)
 - `[:ssh][:password]` - password to use for ssh/winrm
 - `[:ssh][:paranoid]` - specifies the strictness of the host key verification checking
 - `[:ssh][:port]` port to use for ssh/winrm (defaults to 22 for ssh or 5985 for winrm)
@@ -95,13 +95,13 @@ This will use chef-zero and needs no chef server (only works for ssh). Note that
 - `[:customization_spec][:ipsettings][:subnetMask]` - subnet to use
 - `[:customization_spec][:ipsettings][:gateway]` - array of possible gateways to use (this will most often be an array of 1)
 - `[:customization_spec][:ipsettings][:dnsServerList]` - array of DNS servers to use
-- `[:customization_spec][:domain]` - domain to use (if not 'local' on a windows machine it will attempt to domain join)
+- `[:customization_spec][:domain]` - domain to use (if not 'local' on a Windows machine it will attempt to domain join)
 - `[:customization_spec][:domainAdmin]` - domain admin account to use for domain join on windows (should be `{user name}`@`{domain}`)
 - `[:customization_spec][:domainAdminPassword]` - domain administrator password
 - `[:customization_spec][:hostname]` - hostname to use. Defaults to machine resource name if not provided
 - `[:customization_spec][:org_name]` - org name used in sysprep on windows
 - `[:customization_spec][:product_id]` - windows product key
-- `[:customization_spec][:run_once]` - Array of commands for vSphere to run at the end of windows bootstrapping
+- `[:customization_spec][:run_once]` - Array of commands for vSphere to run at the end of Windows bootstrapping
 - `[:customization_spec][:time_zone]` - The case-sensitive timezone, such as Europe/Sofia based on the tz (timezone) database used by Linux and other Unix systems
 - `[:customization_spec][:winrm_transport]` - winrm transport to use. Defaults to `negotiate`
 - `[:customization_spec][:win_time_zone]` - numeric time zone for windows
@@ -112,7 +112,7 @@ These are settings set at the root of `machine_options`. Chances are the default
 
 - `start_timeout` - number of seconds to wait for a machine to be accessible after a restart (default 10 minutes)
 - `create_timeout` - number of seconds to wait for a machine to be accessible after initiating provisioning (default 10 minutes)
-- `ready_timeout` - number of seconds to wait for customization to complete and vmware tools to come on line (default 5 minutes)
+- `ready_timeout` - number of seconds to wait for customization to complete and VMware Tools to come on line (default 5 minutes)
 
 ## More config examples
 
@@ -178,7 +178,7 @@ with_machine_options :bootstrap_options => {
   :ssl_verify_mode => :verify_none
 }
 ```
-Note: You must run chef-client against a server for a windows box. You can do this locally since the provisioning recipe should not change the state of the provisioner. You will need to upload the cookbook (both the one doing the provisioning and the one used in the provisioned machine's runlist) before running `chef-client`.
+Note: You must run chef-client against a server for a Windows box. You can do this locally since the provisioning recipe should not change the state of the provisioner. You will need to upload the cookbook (both the one doing the provisioning and the one used in the provisioned machine's runlist) before running `chef-client`.
 
 ```
 knife cookbook upload my_cookbook
