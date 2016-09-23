@@ -33,7 +33,7 @@ require 'chef/provisioning/vsphere_driver'
 
 with_vsphere_driver host: 'vcenter-host-name',
   insecure: true,
-  user:     'you_user_name',
+  user:     'your_user_name',
   password: 'your_mothers_maiden_name'
 
 with_machine_options :bootstrap_options => {
