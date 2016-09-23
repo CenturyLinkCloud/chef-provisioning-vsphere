@@ -96,15 +96,15 @@ This will use chef-zero and needs no chef server (only works for ssh). Note that
 - `[:customization_spec][:ipsettings][:gateway]` - array of possible gateways to use (this will most often be an array of 1)
 - `[:customization_spec][:ipsettings][:dnsServerList]` - array of DNS servers to use
 - `[:customization_spec][:domain]` - domain to use (if not 'local' on a Windows machine it will attempt to domain join)
-- `[:customization_spec][:domainAdmin]` - domain admin account to use for domain join on windows (should be `{user name}`@`{domain}`)
+- `[:customization_spec][:domainAdmin]` - domain admin account to use for domain join on Windows (should be `{user name}`@`{domain}`)
 - `[:customization_spec][:domainAdminPassword]` - domain administrator password
 - `[:customization_spec][:hostname]` - hostname to use. Defaults to machine resource name if not provided
-- `[:customization_spec][:org_name]` - org name used in sysprep on windows
-- `[:customization_spec][:product_id]` - windows product key
+- `[:customization_spec][:org_name]` - org name used in sysprep on Windows
+- `[:customization_spec][:product_id]` - Windows product key
 - `[:customization_spec][:run_once]` - Array of commands for vSphere to run at the end of Windows bootstrapping
 - `[:customization_spec][:time_zone]` - The case-sensitive timezone, such as Europe/Sofia based on the tz (timezone) database used by Linux and other Unix systems
 - `[:customization_spec][:winrm_transport]` - winrm transport to use. Defaults to `negotiate`
-- `[:customization_spec][:win_time_zone]` - numeric time zone for windows
+- `[:customization_spec][:win_time_zone]` - numeric time zone for Windows
 - `[:customization_spec][:winrm_opts]` - Optional hash of [winrm options](https://github.com/WinRb/WinRM) (e.g. `disable_sspi: true`)
 
 ## Timeout options
@@ -146,7 +146,7 @@ with_machine_options :bootstrap_options => {
 }
 ```
 
-### Domain joined windows machine
+### Domain joined Windows machine
 
 ```
 with_machine_options :bootstrap_options => {
