@@ -1,4 +1,5 @@
 require 'rbvmomi'
+require 'uri'
 
 module ChefProvisioningVsphere
   class VsphereHelper
@@ -8,6 +9,12 @@ module ChefProvisioningVsphere
     end
 
     def initialize(connect_options, datacenter_name)
+      if ENV['https_proxy']
+        proxy_uri = URI.parse(ENV['https_proxy'])
+        #proxy_user, proxy_pass = uri.userinfo.split(/:/) if uri.userinfo 
+        connect_options[:proxyHost] = proxy_uri.host
+        connect_options[:proxyPort] = proxy_uri.port
+      end
       @connect_options = connect_options
       @datacenter_name = datacenter_name
     end
