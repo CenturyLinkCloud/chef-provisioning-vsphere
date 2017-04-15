@@ -1,6 +1,10 @@
 chef-provisioning-vsphere
 ==================
 
+# NOTE: Please be advised that this gem is now being supported at https://github.com/chef-partners/chef-provisioning-vsphere
+
+# NOTE: If you open a PR or an issue here, it's unlikely it'll be noticed, please open here: https://github.com/chef-partners/chef-provisioning-vsphere/issues
+
 This is a [chef-provisioning](https://github.com/opscode/chef-provisioning) provisioner for [VMware vSphere](http://www.vmware.com/products/vsphere).
 
 chef-provisioning-vsphere supports provisioning Unix/ssh and Windows/winrm guest VMs.
