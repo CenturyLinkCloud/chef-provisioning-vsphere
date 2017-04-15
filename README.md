@@ -79,7 +79,7 @@ This will use chef-zero and needs no chef server (only works for ssh). Note that
 
 - `[:use_linked_clone]` - (true/false) great for testing but not recommended for production.
 - `[:datacenter]` - Name of vsphere datacenter (*required*)
-- `[:template_name]` - path to vmware template (can be template or a shutown vm) (*required*)
+- `[:template_name]` - path to vmware template (can be template or a shutdown vm) (*required*)
 - `[:template_folder]` - path to a folder containing the template (do not use if template is in the root vm folder)
 - `[:vm_folder]` - path to a folder where the machine will be created.
 - `[:datastore]` - name of datastore to use
