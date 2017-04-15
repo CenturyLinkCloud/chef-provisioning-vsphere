@@ -704,8 +704,40 @@ module ChefProvisioningVsphere
           bootstrap_options[:customization_spec][:ipsettings][:ip]
         end
       else
+        if use_ipv4_during_bootstrap?(bootstrap_options)
+          wait_for_ipv4(bootstrap_ip_timeout(bootstrap_options), vm)
+        end
         vm.guest.ipAddress
       end
     end
+
+    def use_ipv4_during_bootstrap?(bootstrap_options)
+      if bootstrap_options.has_key?(:bootstrap_ipv4)
+        return bootstrap_options[:bootstrap_ipv4] == true
+      end
+      false
+    end
+
+    def bootstrap_ip_timeout(bootstrap_options)
+      if bootstrap_options.has_key?(:ipv4_timeout)
+        return bootstrap_options[:ipv4_timeout].to_i
+      end
+      30
+    end
+
+    def wait_for_ipv4(timeout, vm)
+      sleep_time = 5
+      print 'Waiting for ipv4 address.'
+      tries = 0
+      max_tries = timeout > sleep_time ? timeout / sleep_time : 1
+      while ( vm.guest.ipAddress.nil? || ! IPAddr.new(vm.guest.ipAddress).ipv4? ) && ( tries += 1 ) <= max_tries do
+        print '.'
+        sleep sleep_time
+      end
+      raise "Timed out waiting for ipv4 address!" if tries > max_tries && ! IPAddr.new(vm.guest.ipAddress).ipv4?
+      puts "Found ipv4 address!"
+      true
+    end
+
   end
 end

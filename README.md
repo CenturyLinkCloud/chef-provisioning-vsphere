@@ -89,6 +89,8 @@ This will use chef-zero and needs no chef server (only works for ssh). Note that
 - `[:host]` - `{cluster}`/`{host}` to use during provisioning
 - `[:resource_pool]` - `{cluster}`/`{resource pool}` to use during provisioning
 - `[:additional_disk_size_gb]` - an array of numbers, each signifying the number of gigabytes to assign to an additional disk (*this requires a datastore to be specified*)
+- `[:bootstrap_ipv4]` - `true` / `false`, set to `true` to wait for an IPv4 address to become available before bootstrapping.
+- `[:ipv4_timeout]` - use with `[:bootstrap_ipv4]`, set the time in seconds to wait before an IPv4 address is received (defaults to 30)
 - `[:ssh][:user]` user to use for ssh/winrm (defaults to root on linux/administrator on windows)
 - `[:ssh][:password]` - password to use for ssh/winrm
 - `[:ssh][:paranoid]` - specifies the strictness of the host key verification checking
