@@ -223,6 +223,10 @@ module ChefProvisioningVsphere
 
       setup_extra_nics(action_handler, bootstrap_options, vm, machine)
 
+      if !bootstrap_options[:iso_datastore].to_s.empty? && !bootstrap_options[:iso_file].to_s.empty?
+        vsphere_helper.mount_iso(vm, bootstrap_options[:iso_datastore], bootstrap_options[:iso_file])
+      end
+
       if has_static_ip(bootstrap_options) && !is_windows?(vm)
         setup_ubuntu_dns(machine, bootstrap_options, machine_spec)
       end

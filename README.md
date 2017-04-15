@@ -83,6 +83,8 @@ This will use chef-zero and needs no chef server (only works for ssh). Note that
 - `[:template_folder]` - path to a folder containing the template (do not use if template is in the root vm folder)
 - `[:vm_folder]` - path to a folder where the machine will be created.
 - `[:datastore]` - name of datastore to use
+- `[:iso_datastore]` - name of datastore to use for mapping iso datastore to cd/dvd drive
+- `[:iso_file]` - full path on iso file uploaded to the datastore
 - `[:num_cpus]` -  number of cpus to allocate to machine
 - `[:network_name]` - array of network names to use. A NIC will be added for each
 - `[:memory_mb]` - number of megabytes to allocate for machine
