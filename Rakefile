@@ -20,4 +20,15 @@ RSpec::Core::RakeTask.new(:integration) do |task|
   task.rspec_opts = ['--color', '-f documentation']
 end
 
+begin
+  require "github_changelog_generator/task"
+
+  GitHubChangelogGenerator::RakeTask.new :changelog do |config|
+    config.future_release = ChefProvisioningVsphere::VERSION
+    config.issues = true
+  end
+rescue LoadError
+  puts "github_changelog_generator is not available. gem install github_changelog_generator to generate changelogs"
+end
+
 task default: [:unit]

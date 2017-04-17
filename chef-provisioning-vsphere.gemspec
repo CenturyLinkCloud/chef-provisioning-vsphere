@@ -23,6 +23,7 @@ Gem::Specification.new do |s|
 
   s.add_dependency 'rbvmomi', '~> 1.8.0', '>= 1.8.2'
   s.add_dependency 'chef-provisioning', '~>2.0', '>= 2.0.1'
+  s.add_dependency 'github_changelog_generator'
 
   s.add_development_dependency 'rspec'
   s.add_development_dependency 'rake'
