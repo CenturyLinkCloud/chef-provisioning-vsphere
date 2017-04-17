@@ -1,9 +1,11 @@
-chef-provisioning-vsphere
-==================
+# chef-provisioning-vsphere
+
+[![Gem Version](https://img.shields.io/gem/v/chef-provisioning-vsphere.svg)][gem]
+[![Build Status](https://travis-ci.org/chef-partners/chef-provisioning-vsphere.svg?branch=master)][travis]
 
 This is a [chef-provisioning](https://github.com/chef/chef-provisioning) provisioner for [VMware vSphere](http://www.vmware.com/products/vsphere).
 
-chef-provisioning-vsphere supports provisioning Unix/ssh and Windows/winrm guest VMs.
+chef-provisioning-vsphere supports provisioning Unix/ssh and Windows/WinRMrm guest VMs.
 
 ## Prerequisites
 
