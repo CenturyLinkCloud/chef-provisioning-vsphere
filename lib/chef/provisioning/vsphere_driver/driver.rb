@@ -44,9 +44,7 @@ module ChefProvisioningVsphere
     end
 
     def deep_symbolize(hash_like)
-      if hash_like.nil? || hash_like.empty?
-        return {}
-      end
+      return {} if hash_like.nil? || hash_like.empty?
       r = {}
       hash_like.each do |key, value|
         value = deep_symbolize(value) if value.respond_to?(:values)
@@ -123,7 +121,7 @@ module ChefProvisioningVsphere
     #           -- vm_folder: name of the vSphere folder containing the VM
     #
     def allocate_machine(action_handler, machine_spec, machine_options)
-      machine_options=deep_symbolize(machine_options)
+      machine_options = deep_symbolize(machine_options)
       merge_options! machine_options
 
       if machine_spec.location
@@ -162,10 +160,10 @@ module ChefProvisioningVsphere
 
     def merge_options!(machine_options)
       @config = Cheffish::MergedConfig.new(
-        { :machine_options => machine_options },
+        { machine_options: machine_options },
         @config
       )
-      @config=deep_symbolize(@config.to_h)
+      @config = deep_symbolize(@config.to_h)
     end
 
     def add_machine_spec_location(vm, machine_spec)
@@ -219,7 +217,7 @@ module ChefProvisioningVsphere
     end
 
     def ready_machine(action_handler, machine_spec, machine_options)
-      machine_options=deep_symbolize(machine_options)
+      machine_options = deep_symbolize(machine_options)
       merge_options! machine_options
 
       vm = start_machine(action_handler, machine_spec, machine_options)
@@ -413,13 +411,13 @@ module ChefProvisioningVsphere
 
     # Connect to machine without acquiring it
     def connect_to_machine(machine_spec, machine_options)
-      machine_options=deep_symbolize(machine_options)
+      machine_options = deep_symbolize(machine_options)
       merge_options! machine_options
       machine_for(machine_spec, machine_options)
     end
 
     def destroy_machine(action_handler, machine_spec, machine_options)
-      machine_options=deep_symbolize(machine_options)
+      machine_options = deep_symbolize(machine_options)
       merge_options! machine_options
       vm = vm_for(machine_spec)
       if vm
@@ -439,7 +437,7 @@ module ChefProvisioningVsphere
     end
 
     def stop_machine(action_handler, machine_spec, machine_options)
-      machine_options=deep_symbolize(machine_options)
+      machine_options = deep_symbolize(machine_options)
       merge_options! machine_options
       vm = vm_for(machine_spec)
       if vm
@@ -450,7 +448,7 @@ module ChefProvisioningVsphere
     end
 
     def start_machine(action_handler, machine_spec, machine_options)
-      machine_options=deep_symbolize(machine_options)
+      machine_options = deep_symbolize(machine_options)
       merge_options! machine_options
       vm = vm_for(machine_spec)
       if vm
@@ -713,7 +711,7 @@ module ChefProvisioningVsphere
     def create_ssh_transport(host, options)
       require 'chef/provisioning/transport/ssh'
       ssh_user = options[:user]
-      options = options.inject({}){|memo,(k,v)| memo[k.to_sym] = v; memo}
+      options = options.each_with_object({}) { |(k, v), memo| memo[k.to_sym] = v; }
       Chef::Provisioning::Transport::SSH.new(
         host,
         ssh_user,
