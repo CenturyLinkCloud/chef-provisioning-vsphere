@@ -3,4 +3,8 @@
 source 'https://rubygems.org'
 gemspec
 
-gem 'chef'
+gem "chef", "~> 12.3"
+gem 'pry'
+gem 'pry-byebug'
+gem 'pry-stack_explorer'
+gem 'rb-readline'

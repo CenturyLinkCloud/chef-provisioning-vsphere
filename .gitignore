@@ -4,3 +4,4 @@ Gemfile.lock
 .direnv/
 .envrc
 .ruby-version
+my_cookbook
