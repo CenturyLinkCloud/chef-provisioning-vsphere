@@ -9,8 +9,8 @@ Gem::Specification.new do |s|
   s.extra_rdoc_files = ['README.md']
   s.summary = 'Provisioner for creating vSphere VM instances in Chef Provisioning.'
   s.description = s.summary
-  s.authors = ['CenturyLink Cloud']
-  s.email = 'matt.wrock@CenturyLinkCloud.com'
+  s.authors = ['CenturyLink Cloud', 'JJ Asghar']
+  s.email = 'jj@chef.io'
   s.homepage = 'https://github.com/chef-partners/chef-provisioning-vsphere'
   s.license = 'MIT'
 
