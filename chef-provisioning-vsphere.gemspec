@@ -1,4 +1,5 @@
-$:.unshift(File.dirname(__FILE__) + '/lib')
+# frozen_string_literal: true
+$LOAD_PATH.unshift(File.dirname(__FILE__) + '/lib')
 require 'chef/provisioning/vsphere_driver/version'
 
 Gem::Specification.new do |s|
@@ -14,7 +15,7 @@ Gem::Specification.new do |s|
   s.license = 'MIT'
 
   s.bindir       = 'bin'
-  s.executables  = %w( )
+  s.executables  = %w()
 
   s.require_path = 'lib'
   s.files        = `git ls-files -z`.split("\x0")

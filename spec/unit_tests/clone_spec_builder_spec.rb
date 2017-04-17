@@ -1,3 +1,4 @@
+# frozen_string_literal: true
 require 'chef/provisioning/vsphere_driver'
 require_relative 'support/fake_action_handler'
 require_relative 'support/vsphere_helper_stub'
@@ -79,7 +80,7 @@ describe ChefProvisioningVsphere::CloneSpecBuilder do
   end
 
   context 'not specifying a pool but specifying a host on a template' do
-    before do 
+    before do
       options[:host] = 'host'
       allow(vm_template).to receive_message_chain(:config, :template)
         .and_return(true)
@@ -103,10 +104,10 @@ describe ChefProvisioningVsphere::CloneSpecBuilder do
 
   context 'specifying a hostname' do
     before do
-      options[:customization_spec] = { 
+      options[:customization_spec] = {
         ipsettings: {},
         hostname: hostname,
-        domain: 'local' 
+        domain: 'local'
       }
     end
 
@@ -156,6 +157,6 @@ describe ChefProvisioningVsphere::CloneSpecBuilder do
       it 'raises an error' do
         expect { subject }.to raise_error
       end
-    end    
+    end
   end
 end
