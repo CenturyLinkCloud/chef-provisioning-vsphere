@@ -10,7 +10,7 @@ Gem::Specification.new do |s|
   s.description = s.summary
   s.authors = ['CenturyLink Cloud']
   s.email = 'matt.wrock@CenturyLinkCloud.com'
-  s.homepage = 'https://github.com/tier3/chef-provisioning-vsphere'
+  s.homepage = 'https://github.com/chef-partners/chef-provisioning-vsphere'
   s.license = 'MIT'
 
   s.bindir       = 'bin'
@@ -25,5 +25,5 @@ Gem::Specification.new do |s|
 
   s.add_development_dependency 'rspec'
   s.add_development_dependency 'rake'
-  s.add_development_dependency 'rubocop', '~> 0.29'
+  s.add_development_dependency 'chefstyle'
 end
