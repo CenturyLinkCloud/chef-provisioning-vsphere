@@ -1,3 +1,4 @@
+# frozen_string_literal: true
 module ChefProvisioningVsphere
   class CloneSpecBuilder
     def initialize(vsphere_helper, action_handler)
@@ -14,10 +15,11 @@ module ChefProvisioningVsphere
         powerOn: false,
         template: false,
         config: RbVmomi::VIM.VirtualMachineConfigSpec(
-          :cpuHotAddEnabled => true,
-          :memoryHotAddEnabled => true,
-          :cpuHotRemoveEnabled => true,
-          :deviceChange => Array.new)
+          cpuHotAddEnabled: true,
+          memoryHotAddEnabled: true,
+          cpuHotRemoveEnabled: true,
+          deviceChange: []
+        )
       )
 
       unless options[:annotation].to_s.nil?
@@ -54,7 +56,7 @@ module ChefProvisioningVsphere
       rspec = RbVmomi::VIM.VirtualMachineRelocateSpec
       host = nil
 
-      if options.has_key?(:host)
+      if options.key?(:host)
         host = vsphere_helper.find_host(options[:host])
         rspec.host = host
       end
@@ -67,10 +69,9 @@ module ChefProvisioningVsphere
         raise 'either :host or :resource_pool must be specified when cloning from a VM Template'
       end
 
-
       if options[:use_linked_clone]
         if vm_template.config.template
-          Chef::Log.warn("Using a VM Template, ignoring use_linked_clone.")
+          Chef::Log.warn('Using a VM Template, ignoring use_linked_clone.')
         else
           vsphere_helper.create_delta_disk(vm_template)
           rspec.diskMoveType = :moveChildMostDiskBacking
@@ -85,9 +86,9 @@ module ChefProvisioningVsphere
     end
 
     def customization_options_from(vm_template, vm_name, options)
-      if options.has_key?(:customization_spec)
+      if options.key?(:customization_spec)
         if options[:customization_spec].is_a?(Hash) ||
-          options[:customization_spec].is_a?(Cheffish::MergedConfig)
+           options[:customization_spec].is_a?(Cheffish::MergedConfig)
           cust_options = options[:customization_spec]
           ip_settings = cust_options[:ipsettings]
           cust_domain = cust_options[:domain]
@@ -99,15 +100,18 @@ module ChefProvisioningVsphere
               raise ArgumentError, 'subnetMask is required for static ip'
             end
             cust_ip_settings = RbVmomi::VIM::CustomizationIPSettings.new(
-              ip_settings)
+              ip_settings
+            )
             action_handler.report_progress "customizing #{vm_name} \
               with static IP #{ip_settings[:ip]}"
             cust_ip_settings.ip = RbVmomi::VIM::CustomizationFixedIp(
-              :ipAddress => ip_settings[:ip])
+              ipAddress: ip_settings[:ip]
+            )
           end
           if cust_ip_settings.nil?
-            cust_ip_settings= RbVmomi::VIM::CustomizationIPSettings.new(
-              :ip => RbVmomi::VIM::CustomizationDhcpIpGenerator.new())
+            cust_ip_settings = RbVmomi::VIM::CustomizationIPSettings.new(
+              ip: RbVmomi::VIM::CustomizationDhcpIpGenerator.new
+            )
           end
 
           if ip_settings && ip_settings.key?(:dnsServerList)
@@ -124,24 +128,25 @@ module ChefProvisioningVsphere
           cust_hwclockutc = cust_options[:hw_clock_utc]
           cust_timezone = cust_options[:time_zone]
 
-          if vm_template.config.guestId.start_with?('win')
-            cust_prep = windows_prep_for(options, vm_name)
-          else
-            cust_prep = RbVmomi::VIM::CustomizationLinuxPrep.new(
-              :domain => cust_domain,
-              :hostName => cust_hostname,
-              :hwClockUTC => cust_hwclockutc,
-              :timeZone => cust_timezone
-            )
-          end
+          cust_prep = if vm_template.config.guestId.start_with?('win')
+                        windows_prep_for(options, vm_name)
+                      else
+                        RbVmomi::VIM::CustomizationLinuxPrep.new(
+                          domain: cust_domain,
+                          hostName: cust_hostname,
+                          hwClockUTC: cust_hwclockutc,
+                          timeZone: cust_timezone
+                        )
+                      end
           cust_adapter_mapping = [
             RbVmomi::VIM::CustomizationAdapterMapping.new(
-              :adapter => cust_ip_settings)
+              adapter: cust_ip_settings
+            )
           ]
           RbVmomi::VIM::CustomizationSpec.new(
-            :identity => cust_prep,
-            :globalIPSettings => global_ip_settings,
-            :nicSettingMap => cust_adapter_mapping
+            identity: cust_prep,
+            globalIPSettings: global_ip_settings,
+            nicSettingMap: cust_adapter_mapping
           )
         else
           vsphere_helper.find_customization_spec(options[:customization_spec])
@@ -152,50 +157,60 @@ module ChefProvisioningVsphere
     def hostname_from(options, vm_name)
       hostname = options[:hostname] || vm_name
       test = /^([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])$/
-      if !(hostname =~ test)
+      unless hostname =~ test
         raise 'Only letters, numbers or hyphens in hostnames allowed'
       end
-      RbVmomi::VIM::CustomizationFixedName.new(:name => hostname)
+      RbVmomi::VIM::CustomizationFixedName.new(name: hostname)
     end
 
     def windows_prep_for(options, vm_name)
       cust_options = options[:customization_spec]
-      cust_runonce = RbVmomi::VIM::CustomizationGuiRunOnce.new(
-        :commandList => cust_options[:run_once]) unless cust_options[:run_once].nil?
+      unless cust_options[:run_once].nil?
+        cust_runonce = RbVmomi::VIM::CustomizationGuiRunOnce.new(
+          commandList: cust_options[:run_once]
+        )
+      end
 
       cust_login_password = RbVmomi::VIM::CustomizationPassword(
-        :plainText => true,
-        :value => options[:ssh][:password])
-      if cust_options.has_key?(:domain) and cust_options[:domain] != 'local'
+        plainText: true,
+        value: options[:ssh][:password]
+      )
+      if cust_options.key?(:domain) && (cust_options[:domain] != 'local')
         cust_domain_password = RbVmomi::VIM::CustomizationPassword(
-          :plainText => true,
-          :value => ENV['domainAdminPassword'] || cust_options[:domainAdminPassword])
+          plainText: true,
+          value: ENV['domainAdminPassword'] || cust_options[:domainAdminPassword]
+        )
         cust_id = RbVmomi::VIM::CustomizationIdentification.new(
-          :joinDomain => cust_options[:domain],
-          :domainAdmin => cust_options[:domainAdmin],
-          :domainAdminPassword => cust_domain_password)
-        #puts "my env passwd is: #{ENV['domainAdminPassword']}"
+          joinDomain: cust_options[:domain],
+          domainAdmin: cust_options[:domainAdmin],
+          domainAdminPassword: cust_domain_password
+        )
+        # puts "my env passwd is: #{ENV['domainAdminPassword']}"
         action_handler.report_progress "joining domain #{cust_options[:domain]} /
           with user: #{cust_options[:domainAdmin]}"
       else
         cust_id = RbVmomi::VIM::CustomizationIdentification.new(
-          :joinWorkgroup => 'WORKGROUP')
+          joinWorkgroup: 'WORKGROUP'
+        )
       end
       cust_gui_unattended = RbVmomi::VIM::CustomizationGuiUnattended.new(
-        :autoLogon => true,
-        :autoLogonCount => 1,
-        :password => cust_login_password,
-        :timeZone => cust_options[:win_time_zone])
+        autoLogon: true,
+        autoLogonCount: 1,
+        password: cust_login_password,
+        timeZone: cust_options[:win_time_zone]
+      )
       cust_userdata = RbVmomi::VIM::CustomizationUserData.new(
-        :computerName => hostname_from(cust_options, vm_name),
-        :fullName => cust_options[:org_name],
-        :orgName => cust_options[:org_name],
-        :productId => cust_options[:product_id])
+        computerName: hostname_from(cust_options, vm_name),
+        fullName: cust_options[:org_name],
+        orgName: cust_options[:org_name],
+        productId: cust_options[:product_id]
+      )
       RbVmomi::VIM::CustomizationSysprep.new(
-        :guiRunOnce => cust_runonce,
-        :identification => cust_id,
-        :guiUnattended => cust_gui_unattended,
-        :userData => cust_userdata)
+        guiRunOnce: cust_runonce,
+        identification: cust_id,
+        guiUnattended: cust_gui_unattended,
+        userData: cust_userdata
+      )
     end
   end
 end

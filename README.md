@@ -1,15 +1,17 @@
-chef-provisioning-vsphere
-==================
+# chef-provisioning-vsphere
 
-This is a [chef-provisioning](https://github.com/opscode/chef-provisioning) provisioner for [VMware vSphere](http://www.vmware.com/products/vsphere).
+[![Gem Version](https://img.shields.io/gem/v/chef-provisioning-vsphere.svg)][gem]
+[![Build Status](https://travis-ci.org/chef-partners/chef-provisioning-vsphere.svg?branch=master)][travis]
 
-chef-provisioning-vsphere supports provisioning Unix/ssh and Windows/winrm guest VMs.
+This is a [chef-provisioning](https://github.com/chef/chef-provisioning) provisioner for [VMware vSphere](http://www.vmware.com/products/vsphere).
+
+chef-provisioning-vsphere supports provisioning Unix/ssh and Windows/WinRMrm guest VMs.
 
 ## Prerequisites
 
-### Vsphere infrastructure
+### vSphere infrastructure
 
-A vcenter and valid login credentials.
+A vCenter and valid login credentials.
 
 ### VM Template
 
@@ -17,13 +19,13 @@ A VM template capable of installing Chef 11.8 or newer. This can be either windo
 
 ### A provisioning node (can be local)
 
-An environment equipped with the chef client and the chef-provisioning-vsphere gem.
+An environment equipped with the `chef-client` and the `chef-provisioning-vsphere` gem.
 
 ## A basic provisioning recipe
 
 This is a minimal machine definition that will use a dhcp assigned ip (it assumes the presense of a dhcp server). For test purposes this uses a linked clone for a faster provisioning time. This recipe should be used with a linux template. Windows provisioned servers need to point to a chef server for the cookbooks since winrm does not support port forwarding and there fore cannot reach back on the chef-zero port to get the local cookbooks. See examples below.
 
-```
+```ruby
 chef_gem 'chef-provisioning-vsphere' do
   action :install
   compile_time true
@@ -65,8 +67,8 @@ end
 
 ## Provision!
 
-```
-chef-client -z -o 'my_cookbook::provision'
+```shell
+$ chef-client -z -o 'my_cookbook::provision'
 ```
 
 This will use chef-zero and needs no chef server (only works for ssh). Note that chef-zero does not support berkshelf style cookbook dependency resolution. So this works if the cookbook in the machine's runlist has no external dependencies. If it needs to reach out to supermarket or another berkshelf API server, perform a `berks vendor` to pull down the dependencies first.
@@ -118,7 +120,7 @@ These are settings set at the root of `machine_options`. Chances are the default
 
 ### Static IP and two additional disks of 20 and 50GB
 
-```
+```ruby
 with_machine_options :bootstrap_options => {
   use_linked_clone: true,
   num_cpus: 2,
@@ -148,7 +150,7 @@ with_machine_options :bootstrap_options => {
 
 ### Domain joined windows machine
 
-```
+```ruby
 with_machine_options :bootstrap_options => {
   use_linked_clone: true,
   num_cpus: 2,
@@ -178,16 +180,17 @@ with_machine_options :bootstrap_options => {
   :ssl_verify_mode => :verify_none
 }
 ```
+
 Note: You must run chef-client against a server for a windows box. You can do this locally since the provisioning recipe should not change the state of the provisioner. You will need to upload the cookbook (both the one doing the provisioning and the one used in the provisioned machine's runlist) before running `chef-client`.
 
-```
-knife cookbook upload my_cookbook
-chef-client -o 'my_cookbook::provision' -c .chef/knife.rb
+```shell
+$ knife cookbook upload my_cookbook
+$ chef-client -o 'my_cookbook::provision' -c .chef/knife.rb
 ```
 
 ### Prefix all SSH commands with 'sudo ', for installing on hosts where options[:bootstrap_options][:ssh][:user] is not 'root'. The user must have 'NOPASSWD:ALL' in /etc/sudoers. This is compatible with chef-provisioning-fog functionality
 
-```
+```ruby
 chef_gem 'chef-provisioning-vsphere' do
   action :install
   compile_time true
@@ -231,7 +234,7 @@ end
 
 This chef-provisioning-driver comes with a test-kitchen driver. Here are example driver options you can add to your `kitchen.yml`.
 
-```
+```yaml
 driver:
   name: vsphere
   driver_options:
@@ -267,6 +270,10 @@ driver:
             - 8.8.4.4
 ```
 
-## Contributions are welcome!
+## Contributing
 
-We took care to make this driver as generic as possible but there wll certainly be implementation nuances that may not work for everyone. We are happy to accept contributions to improve the driver and make it more accessible to a broader set of use cases.
+1. Fork it ( https://github.com/[my-github-username]/chef-provisioning-vsphere/fork )
+2. Create your feature branch (`git checkout -b my-new-feature`)
+3. Commit your changes (`git commit -am 'Add some feature'`)
+4. Push to the branch (`git push origin my-new-feature`)
+5. Create a new Pull Request
