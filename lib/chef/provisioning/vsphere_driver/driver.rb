@@ -695,7 +695,6 @@ module ChefProvisioningVsphere
       require 'chef/provisioning/transport/ssh'
       ssh_user = options[:user]
       options = options.inject({}){|memo,(k,v)| memo[k.to_sym] = v; memo}
-      require 'pry'; binding.pry
       Chef::Provisioning::Transport::SSH.new(
         host,
         ssh_user,
