@@ -1,7 +1,14 @@
 # Change Log
 
-## [1.1.0](https://github.com/chef-partners/chef-provisioning-vsphere/tree/1.1.0) (2017-04-20)
-[Full Changelog](https://github.com/chef-partners/chef-provisioning-vsphere/compare/v1.0.0...1.1.0)
+## [1.1.1](https://github.com/chef-partners/chef-provisioning-vsphere/tree/1.1.1) (2017-04-20)
+[Full Changelog](https://github.com/chef-partners/chef-provisioning-vsphere/compare/v1.1.0...1.1.1)
+
+**Merged pull requests:**
+
+- rubocop'd [\#12](https://github.com/chef-partners/chef-provisioning-vsphere/pull/12) ([jjasghar](https://github.com/jjasghar))
+
+## [v1.1.0](https://github.com/chef-partners/chef-provisioning-vsphere/tree/v1.1.0) (2017-04-20)
+[Full Changelog](https://github.com/chef-partners/chef-provisioning-vsphere/compare/v1.0.0...v1.1.0)
 
 **Closed issues:**
 
