@@ -9,9 +9,13 @@ module ChefProvisioningVsphere
     end
 
     def initialize(connect_options, datacenter_name)
-      if ENV['https_proxy']
-        proxy_uri = URI.parse(ENV['https_proxy'])
-        #proxy_user, proxy_pass = uri.userinfo.split(/:/) if uri.userinfo 
+      case
+      when ENV['HTTP_PROXY']
+        proxy_uri = URI.parse(ENV['HTTP_PROXY'])
+        connect_options[:proxyHost] = proxy_uri.host
+        connect_options[:proxyPort] = proxy_uri.port
+      when ENV['HTTPS_PROXY_']
+        proxy_uri = URI.parse(ENV['HTTPS_PROXY'])
         connect_options[:proxyHost] = proxy_uri.host
         connect_options[:proxyPort] = proxy_uri.port
       end
@@ -28,7 +32,7 @@ module ChefProvisioningVsphere
         puts "establishing connection to #{connect_options[:host]}"
         @current_connection = RbVmomi::VIM.connect connect_options
         str_conn = @current_connection.pretty_inspect # a string in the format of VIM(host ip)
-        
+
         # we are caching guest operation managers in a global variable...terrible i know
         # this object is available from the serviceContent object on API version 5 forward
         # Its a singleton and if another connection is made for the same host and user
@@ -125,7 +129,7 @@ module ChefProvisioningVsphere
       if deviceAdditions.count > 0
         current_networks = find_ethernet_cards_for(vm).map{|card| network_id_for(card.backing)}
         new_devices = deviceAdditions.select { |device| !current_networks.include?(network_id_for(device.device.backing))}
-        
+
         if new_devices.count > 0
           action_handler.report_progress "Adding extra NICs"
           task = vm.ReconfigVM_Task(:spec => RbVmomi::VIM.VirtualMachineConfigSpec(:deviceChange => new_devices))
@@ -331,8 +335,8 @@ module ChefProvisioningVsphere
       auth = RbVmomi::VIM::NamePasswordAuthentication({:username => username, :password => password, :interactiveSession => false})
       size = File.size(local)
       endpoint = $guest_op_managers[vim.pretty_inspect].fileManager.InitiateFileTransferToGuest(
-        :vm => vm, 
-        :auth => auth, 
+        :vm => vm,
+        :auth => auth,
         :guestFilePath => remote,
         :overwrite => true,
         :fileAttributes => RbVmomi::VIM::GuestWindowsFileAttributes.new,
@@ -342,12 +346,12 @@ module ChefProvisioningVsphere
         http = Net::HTTP.new(uri.host, uri.port)
         http.use_ssl = true
         http.verify_mode = OpenSSL::SSL::VERIFY_NONE
-        
+
         req = Net::HTTP::Put.new("#{uri.path}?#{uri.query}")
         req.body_stream = File.open(local)
         req["Content-Type"] = "application/octet-stream"
         req["Content-Length"] = size
-        res = http.request(req) 
+        res = http.request(req)
         unless res.kind_of?(Net::HTTPSuccess)
           raise "Error: #{res.inspect} :: #{res.body} :: sending #{local} to #{remote} at #{vm.name} via #{endpoint} with a size of #{size}"
         end
