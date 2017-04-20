@@ -1,10 +1,25 @@
 # Change Log
 
-## [1.0.0](https://github.com/chef-partners/chef-provisioning-vsphere/tree/1.0.0) (2017-04-17)
-[Full Changelog](https://github.com/chef-partners/chef-provisioning-vsphere/compare/v0.8.1...1.0.0)
+## [1.1.0](https://github.com/chef-partners/chef-provisioning-vsphere/tree/1.1.0) (2017-04-20)
+[Full Changelog](https://github.com/chef-partners/chef-provisioning-vsphere/compare/v1.0.0...1.1.0)
+
+**Closed issues:**
+
+- Skip bootstrap after provisioning [\#6](https://github.com/chef-partners/chef-provisioning-vsphere/issues/6)
 
 **Merged pull requests:**
 
+- document reqd fields for sysprep [\#11](https://github.com/chef-partners/chef-provisioning-vsphere/pull/11) ([nealbrown](https://github.com/nealbrown))
+- Updated some depenant gems [\#10](https://github.com/chef-partners/chef-provisioning-vsphere/pull/10) ([jjasghar](https://github.com/jjasghar))
+- Metalseargolid feature/ipv4 bootstrap [\#8](https://github.com/chef-partners/chef-provisioning-vsphere/pull/8) ([jjasghar](https://github.com/jjasghar))
+- Add proxy support [\#7](https://github.com/chef-partners/chef-provisioning-vsphere/pull/7) ([jjasghar](https://github.com/jjasghar))
+
+## [v1.0.0](https://github.com/chef-partners/chef-provisioning-vsphere/tree/v1.0.0) (2017-04-17)
+[Full Changelog](https://github.com/chef-partners/chef-provisioning-vsphere/compare/v0.8.1...v1.0.0)
+
+**Merged pull requests:**
+
+- v1.0.0 release [\#4](https://github.com/chef-partners/chef-provisioning-vsphere/pull/4) ([jjasghar](https://github.com/jjasghar))
 - Added links to the README [\#3](https://github.com/chef-partners/chef-provisioning-vsphere/pull/3) ([jjasghar](https://github.com/jjasghar))
 - Cleanup for new release [\#2](https://github.com/chef-partners/chef-provisioning-vsphere/pull/2) ([jjasghar](https://github.com/jjasghar))
 - ensure machine\_options and configs are symbolised for chef13 [\#1](https://github.com/chef-partners/chef-provisioning-vsphere/pull/1) ([jjlimepoint](https://github.com/jjlimepoint))
