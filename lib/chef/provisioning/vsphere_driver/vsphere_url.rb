@@ -4,7 +4,7 @@ require 'uri'
 module URI
   class VsphereUrl < Generic
     DEFAULT_PORT = 443
-    DEFAULT_PATH = '/sdk'.freeze
+    DEFAULT_PATH = '/sdk'
 
     def self.from_config(options)
       parts = []

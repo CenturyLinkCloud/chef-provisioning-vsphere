@@ -122,8 +122,8 @@ module ChefProvisioningVsphere
       deviceAdditions, changes = network_device_changes(action_handler, vm_template, options)
 
       if deviceAdditions.count > 0
-        current_networks = find_ethernet_cards_for(vm).map{|card| network_id_for(card.backing)}
-        new_devices = deviceAdditions.select { |device| !current_networks.include?(network_id_for(device.device.backing))}
+        current_networks = find_ethernet_cards_for(vm).map { |card| network_id_for(card.backing) }
+        new_devices = deviceAdditions.select { |device| !current_networks.include?(network_id_for(device.device.backing)) }
 
         if new_devices.count > 0
           action_handler.report_progress 'Adding extra NICs'
@@ -329,26 +329,27 @@ module ChefProvisioningVsphere
       auth = RbVmomi::VIM::NamePasswordAuthentication(username: username, password: password, interactiveSession: false)
       size = File.size(local)
       endpoint = $guest_op_managers[vim.pretty_inspect].fileManager.InitiateFileTransferToGuest(
-        :vm => vm,
-        :auth => auth,
-        :guestFilePath => remote,
-        :overwrite => true,
-        :fileAttributes => RbVmomi::VIM::GuestWindowsFileAttributes.new,
-        :fileSize => size)
+        vm: vm,
+        auth: auth,
+        guestFilePath: remote,
+        overwrite: true,
+        fileAttributes: RbVmomi::VIM::GuestWindowsFileAttributes.new,
+        fileSize: size
+      )
 
-        uri = URI.parse(endpoint)
-        http = Net::HTTP.new(uri.host, uri.port)
-        http.use_ssl = true
-        http.verify_mode = OpenSSL::SSL::VERIFY_NONE
+      uri = URI.parse(endpoint)
+      http = Net::HTTP.new(uri.host, uri.port)
+      http.use_ssl = true
+      http.verify_mode = OpenSSL::SSL::VERIFY_NONE
 
-        req = Net::HTTP::Put.new("#{uri.path}?#{uri.query}")
-        req.body_stream = File.open(local)
-        req["Content-Type"] = "application/octet-stream"
-        req["Content-Length"] = size
-        res = http.request(req)
-        unless res.kind_of?(Net::HTTPSuccess)
-          raise "Error: #{res.inspect} :: #{res.body} :: sending #{local} to #{remote} at #{vm.name} via #{endpoint} with a size of #{size}"
-        end
+      req = Net::HTTP::Put.new("#{uri.path}?#{uri.query}")
+      req.body_stream = File.open(local)
+      req['Content-Type'] = 'application/octet-stream'
+      req['Content-Length'] = size
+      res = http.request(req)
+      unless res.is_a?(Net::HTTPSuccess)
+        raise "Error: #{res.inspect} :: #{res.body} :: sending #{local} to #{remote} at #{vm.name} via #{endpoint} with a size of #{size}"
+      end
     end
   end
 end
