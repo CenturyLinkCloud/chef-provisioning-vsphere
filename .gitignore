@@ -1,3 +1,7 @@
 pkg/
 Gemfile.lock
 *.gem
+.direnv/
+.envrc
+.ruby-version
+my_cookbook

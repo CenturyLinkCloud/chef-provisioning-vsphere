@@ -1,5 +1,4 @@
 # -*- encoding: utf-8 -*-
-source "https://rubygems.org"
+# frozen_string_literal: true
+source 'https://rubygems.org'
 gemspec
-
-gem "chef", "~> 12.3"
