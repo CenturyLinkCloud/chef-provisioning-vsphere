@@ -1,5 +1,6 @@
 require 'rbvmomi'
 require 'uri'
+require 'net/http'
 
 module ChefProvisioningVsphere
   class VsphereHelper
@@ -9,15 +10,10 @@ module ChefProvisioningVsphere
     end
 
     def initialize(connect_options, datacenter_name)
-      case
-      when ENV['HTTP_PROXY']
-        proxy_uri = URI.parse(ENV['HTTP_PROXY'])
-        connect_options[:proxyHost] = proxy_uri.host
-        connect_options[:proxyPort] = proxy_uri.port
-      when ENV['HTTPS_PROXY_']
-        proxy_uri = URI.parse(ENV['HTTPS_PROXY'])
-        connect_options[:proxyHost] = proxy_uri.host
-        connect_options[:proxyPort] = proxy_uri.port
+      http = Net::HTTP.new(connect_options[:host], connect_options[:port])
+      if http.proxy?
+        connect_options[:proxyHost] = http.proxy_address
+        connect_options[:proxyPort] = http.proxy_port
       end
       @connect_options = connect_options
       @datacenter_name = datacenter_name
