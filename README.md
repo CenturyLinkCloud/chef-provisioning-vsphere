@@ -149,7 +149,7 @@ with_machine_options :bootstrap_options => {
 ```
 
 ### Domain joined windows machine
-customization_spec org_name and product_id are required for sysprep
+NOTE: customization_spec `org_name` and `product_id` are required for sysprep Windows machines.
 
 ```ruby
 with_machine_options :bootstrap_options => {
