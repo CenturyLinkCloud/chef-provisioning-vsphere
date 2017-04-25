@@ -736,7 +736,7 @@ module ChefProvisioningVsphere
         if use_ipv4_during_bootstrap?(bootstrap_options)
           wait_for_ipv4(bootstrap_ip_timeout(bootstrap_options), vm, bootstrap_options)
         end
-        @ip_connect # Valid saved dhcp ipv4 
+        @ip_connect # Valid saved dhcp ipv4
       end
     end
 
