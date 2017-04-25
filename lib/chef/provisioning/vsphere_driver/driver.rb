@@ -764,11 +764,11 @@ module ChefProvisioningVsphere
       while start_search_ip && (tries += 1) <= max_tries
         print '.'
         sleep sleep_time
-        @ip_connect = vm.guest.ipAddress.to_s if vm.guest.guestState == 'running' && vm.guest.toolsRunningStatus == 'guestToolsRunning' && !vm.guest.ipAddress.nil?
-        start_search_ip = false if (!vm.guest.ipAddress.nil? || IPAddr.new(vm.guest.ipAddress).ipv4?) && open_port(@ip_connect, port)
+        @ip_connect = vm.guest.ipAddress.to_s if vm.guest.guestState == 'running' && vm.guest.toolsRunningStatus == 'guestToolsRunning' && !vm.guest.ipAddress.nil? && IPAddr.new(vm.guest.ipAddress).ipv4?
+        start_search_ip = false if open_port(@ip_connect, port)
       end
       raise 'Timed out waiting for ipv4 address!' if tries > max_tries && !IPAddr.new(vm.guest.ipAddress).ipv4?
-      puts "\nFound valid ipv4 address! #{ip}"
+      puts "\nFound valid ipv4 address! #{@ip_connect}"
       true
     end
 
