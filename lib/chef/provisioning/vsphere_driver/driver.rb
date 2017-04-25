@@ -757,14 +757,12 @@ module ChefProvisioningVsphere
       tries = 0
       max_tries = timeout > sleep_time ? timeout / sleep_time : 1
       port = find_port(vm, bootstrap_options)
-      print "Max Tries: #{max_tries}\n"
-      print "Looking availability for port #{port}\n"
-      print 'Waiting for ipv4 address.'
       start_search_ip = true
+      print 'Waiting for ipv4 address.'
       while start_search_ip && (tries += 1) <= max_tries
         print '.'
         sleep sleep_time
-        ip = vm.guest.ipAddress.to_s unless vm.guest.ipAddress.nil? && !IPAddr.new(vm.guest.ipAddress).ipv4?
+        ip = vm.guest.ipAddress.to_s if vm.guest.guestState == 'running' && vm.guest.toolsRunningStatus == 'guestToolsRunning' && !vm.guest.ipAddress.nil?
         start_search_ip = false if (!vm.guest.ipAddress.nil? || IPAddr.new(vm.guest.ipAddress).ipv4?) && open_port(ip, port)
       end
       raise 'Timed out waiting for ipv4 address!' if tries > max_tries && !IPAddr.new(vm.guest.ipAddress).ipv4?
@@ -786,11 +784,11 @@ module ChefProvisioningVsphere
     end
 
     RESCUE_EXCEPTIONS_ON_ESTABLISH = [
-        Errno::EACCES, Errno::EADDRINUSE, Errno::ECONNREFUSED, Errno::ETIMEDOUT,
-        Errno::ECONNRESET, Errno::ENETUNREACH, Errno::EHOSTUNREACH, Errno::EPIPE,
-        Errno::EPERM, Errno::EFAULT, Errno::EIO,
-        Net::SSH::Disconnect, Net::SSH::AuthenticationFailed, Net::SSH::ConnectionTimeout,
-        Timeout::Error, IPAddr::AddressFamilyError
+      Errno::EACCES, Errno::EADDRINUSE, Errno::ECONNREFUSED, Errno::ETIMEDOUT,
+      Errno::ECONNRESET, Errno::ENETUNREACH, Errno::EHOSTUNREACH, Errno::EPIPE,
+      Errno::EPERM, Errno::EFAULT, Errno::EIO,
+      Net::SSH::Disconnect, Net::SSH::AuthenticationFailed, Net::SSH::ConnectionTimeout,
+      Timeout::Error, IPAddr::AddressFamilyError
     ].freeze
 
     def open_port(host, port)
@@ -801,8 +799,7 @@ module ChefProvisioningVsphere
       else
         false
       end
-    rescue *RESCUE_EXCEPTIONS_ON_ESTABLISH => e
-      print "#{e}\n"
+    rescue *RESCUE_EXCEPTIONS_ON_ESTABLISH
       false
     end
   end
