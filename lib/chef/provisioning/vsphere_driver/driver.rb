@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require 'chef'
 require 'cheffish/merged_config'
 require 'chef/provisioning/driver'
@@ -731,7 +732,7 @@ module ChefProvisioningVsphere
         end
       else
         if use_ipv4_during_bootstrap?(bootstrap_options)
-          wait_for_ipv4(bootstrap_ip_timeout(bootstrap_options), vm)
+          wait_for_ipv4(bootstrap_ip_timeout(bootstrap_options), vm, bootstrap_options)
         end
         vm.guest.ipAddress
       end
@@ -751,18 +752,58 @@ module ChefProvisioningVsphere
       30
     end
 
-    def wait_for_ipv4(timeout, vm)
-      sleep_time = 5
-      print 'Waiting for ipv4 address.'
+    def wait_for_ipv4(timeout, vm, bootstrap_options)
+      sleep_time = 1
       tries = 0
       max_tries = timeout > sleep_time ? timeout / sleep_time : 1
-      while (vm.guest.ipAddress.nil? || !IPAddr.new(vm.guest.ipAddress).ipv4?) && (tries += 1) <= max_tries
+      port = find_port(vm, bootstrap_options)
+      print "Max Tries: #{max_tries}\n"
+      print "Looking availability for port #{port}\n"
+      print 'Waiting for ipv4 address.'
+      start_search_ip = true
+      while start_search_ip && (tries += 1) <= max_tries
         print '.'
         sleep sleep_time
+        ip = vm.guest.ipAddress.to_s unless vm.guest.ipAddress.nil? && !IPAddr.new(vm.guest.ipAddress).ipv4?
+        start_search_ip = false if (!vm.guest.ipAddress.nil? || IPAddr.new(vm.guest.ipAddress).ipv4?) && open_port(ip, port)
       end
       raise 'Timed out waiting for ipv4 address!' if tries > max_tries && !IPAddr.new(vm.guest.ipAddress).ipv4?
-      puts 'Found ipv4 address!'
+      puts "\nFound valid ipv4 address! #{ip}"
       true
+    end
+
+    def find_port(vm, options)
+      customization_spec = options[:customization_spec]
+      port = options[:ssh][:port]
+      if is_windows?(vm)
+        winrm_transport = customization_spec[:winrm_transport].nil? ? :negotiate : customization_spec[:winrm_transport].to_sym
+        default_win_port = winrm_transport == :ssl ? '5986' : '5985'
+        port = default_win_port if port.nil?
+      elsif port.nil?
+        port = '22'
+      end
+      port
+    end
+
+    RESCUE_EXCEPTIONS_ON_ESTABLISH = [
+        Errno::EACCES, Errno::EADDRINUSE, Errno::ECONNREFUSED, Errno::ETIMEDOUT,
+        Errno::ECONNRESET, Errno::ENETUNREACH, Errno::EHOSTUNREACH, Errno::EPIPE,
+        Errno::EPERM, Errno::EFAULT, Errno::EIO,
+        Net::SSH::Disconnect, Net::SSH::AuthenticationFailed, Net::SSH::ConnectionTimeout,
+        Timeout::Error, IPAddr::AddressFamilyError
+    ].freeze
+
+    def open_port(host, port)
+      if host
+        sock = ::Socket.new(:INET, :STREAM)
+        raw = ::Socket.sockaddr_in(port, host)
+        true if sock.connect(raw)
+      else
+        false
+      end
+    rescue *RESCUE_EXCEPTIONS_ON_ESTABLISH => e
+      print "#{e}\n"
+      false
     end
   end
 end
