@@ -159,6 +159,8 @@ module ChefProvisioningVsphere
       vm
     end
 
+    attr_accessor :ip_connect
+
     def merge_options!(machine_options)
       @config = Cheffish::MergedConfig.new(
         { machine_options: machine_options },
@@ -728,13 +730,13 @@ module ChefProvisioningVsphere
           spec = vsphere_helper.find_customization_spec(bootstrap_options[:customization_spec])
           spec.nicSettingMap[0].adapter.ip.ipAddress
         else
-          bootstrap_options[:customization_spec][:ipsettings][:ip]
+          @ip_connect = bootstrap_options[:customization_spec][:ipsettings][:ip]
         end
       else
         if use_ipv4_during_bootstrap?(bootstrap_options)
           wait_for_ipv4(bootstrap_ip_timeout(bootstrap_options), vm, bootstrap_options)
         end
-        vm.guest.ipAddress
+        @ip_connect
       end
     end
 
@@ -762,8 +764,8 @@ module ChefProvisioningVsphere
       while start_search_ip && (tries += 1) <= max_tries
         print '.'
         sleep sleep_time
-        ip = vm.guest.ipAddress.to_s if vm.guest.guestState == 'running' && vm.guest.toolsRunningStatus == 'guestToolsRunning' && !vm.guest.ipAddress.nil?
-        start_search_ip = false if (!vm.guest.ipAddress.nil? || IPAddr.new(vm.guest.ipAddress).ipv4?) && open_port(ip, port)
+        @ip_connect = vm.guest.ipAddress.to_s if vm.guest.guestState == 'running' && vm.guest.toolsRunningStatus == 'guestToolsRunning' && !vm.guest.ipAddress.nil?
+        start_search_ip = false if (!vm.guest.ipAddress.nil? || IPAddr.new(vm.guest.ipAddress).ipv4?) && open_port(@ip_connect, port)
       end
       raise 'Timed out waiting for ipv4 address!' if tries > max_tries && !IPAddr.new(vm.guest.ipAddress).ipv4?
       puts "\nFound valid ipv4 address! #{ip}"
