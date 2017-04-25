@@ -730,13 +730,13 @@ module ChefProvisioningVsphere
           spec = vsphere_helper.find_customization_spec(bootstrap_options[:customization_spec])
           spec.nicSettingMap[0].adapter.ip.ipAddress
         else
-          @ip_connect = bootstrap_options[:customization_spec][:ipsettings][:ip]
+          bootstrap_options[:customization_spec][:ipsettings][:ip]
         end
       else
         if use_ipv4_during_bootstrap?(bootstrap_options)
           wait_for_ipv4(bootstrap_ip_timeout(bootstrap_options), vm, bootstrap_options)
         end
-        @ip_connect
+        @ip_connect # Valid saved dhcp ipv4 
       end
     end
 
@@ -761,6 +761,7 @@ module ChefProvisioningVsphere
       port = find_port(vm, bootstrap_options)
       start_search_ip = true
       print 'Waiting for ipv4 address.'
+      @ip_connect ||= nil
       while start_search_ip && (tries += 1) <= max_tries
         print '.'
         sleep sleep_time
@@ -794,7 +795,7 @@ module ChefProvisioningVsphere
     ].freeze
 
     def open_port(host, port)
-      if host
+      if host.to_s.length > 7
         sock = ::Socket.new(:INET, :STREAM)
         raw = ::Socket.sockaddr_in(port, host)
         true if sock.connect(raw)
