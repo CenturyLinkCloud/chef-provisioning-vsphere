@@ -730,7 +730,8 @@ module ChefProvisioningVsphere
           spec = vsphere_helper.find_customization_spec(bootstrap_options[:customization_spec])
           spec.nicSettingMap[0].adapter.ip.ipAddress
         else
-          bootstrap_options[:customization_spec][:ipsettings][:ip]
+          @ip_connect = bootstrap_options[:customization_spec][:ipsettings][:ip]
+          @ip_connect until open_port(@ip_connect,find_port(vm,bootstrap_options)) # Valid saved ipv4 static
         end
       else
         if use_ipv4_during_bootstrap?(bootstrap_options)
