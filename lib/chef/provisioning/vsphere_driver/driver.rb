@@ -159,7 +159,7 @@ module ChefProvisioningVsphere
       vm
     end
 
-    attr_accessor :ip_connect
+    attr_accessor :vm_ip_connect, :vm_port_connect # Only for VM purposes
 
     def merge_options!(machine_options)
       @config = Cheffish::MergedConfig.new(
@@ -278,9 +278,10 @@ module ChefProvisioningVsphere
     )
       bootstrap_options = machine_options[:bootstrap_options]
 
-      # this waits for vmware tools to start and the vm to presebnt an ip
+      # this waits for vmware tools to start and the vm to present an ip
       # This may just be the ip of a newly cloned machine
       # Customization below may change this to a valid ip
+
       wait_until_ready(action_handler, machine_spec, machine_options, vm)
 
       if !machine_spec.location['ipaddress'] || !has_ip?(machine_spec.location['ipaddress'], vm)
@@ -382,7 +383,7 @@ module ChefProvisioningVsphere
       bootstrap_options = machine_options[:bootstrap_options]
       vm_ip = ip_to_bootstrap(bootstrap_options, vm)
       ready_timeout = machine_options[:ready_timeout] || 300
-      msg = "waiting up to #{ready_timeout} seconds for customization"
+      msg = "\nWaiting up to #{ready_timeout} seconds for customization"
       msg << " and find #{vm_ip}" unless vm_ip == vm.guest.ipAddress
       action_handler.report_progress msg
 
@@ -524,7 +525,7 @@ module ChefProvisioningVsphere
     def wait_until_ready(action_handler, machine_spec, machine_options, vm)
       if vm.guest.toolsRunningStatus != 'guestToolsRunning'
         if action_handler.should_perform_actions
-          action_handler.report_progress "waiting for #{machine_spec.name} (#{vm.config.instanceUuid} on #{driver_url}) to be ready ..."
+          action_handler.report_progress "waiting for #{machine_spec.name} (#{vm.config.instanceUuid} on #{driver_url}) to be ready"
           until remaining_wait_time(machine_spec, machine_options) < 0 ||
                 (vm.guest.toolsRunningStatus == 'guestToolsRunning' && vm.guest.ipAddress && !vm.guest.ipAddress.empty?)
             print '.'
@@ -730,14 +731,16 @@ module ChefProvisioningVsphere
           spec = vsphere_helper.find_customization_spec(bootstrap_options[:customization_spec])
           spec.nicSettingMap[0].adapter.ip.ipAddress
         else
-          @ip_connect = bootstrap_options[:customization_spec][:ipsettings][:ip]
-          @ip_connect until open_port(@ip_connect, find_port(vm, bootstrap_options)) # Valid saved ipv4 static
+          @vm_ip_connect = bootstrap_options[:customization_spec][:ipsettings][:ip].to_s
+          @vm_port_connect = find_port(vm, bootstrap_options)
+          print '.' until open_port(@vm_ip_connect, @vm_port_connect, 1)
+          @vm_ip_connect.to_s
         end
       else
         if use_ipv4_during_bootstrap?(bootstrap_options)
-          wait_for_ipv4(bootstrap_ip_timeout(bootstrap_options), vm, bootstrap_options)
+          wait_for_ipv4(bootstrap_ip_timeout(bootstrap_options), vm, bootstrap_options) # Look for dhcp ip
         end
-        @ip_connect # Valid saved dhcp ipv4
+        @vm_ip_connect.to_s # Valid saved dhcp ipv4
       end
     end
 
@@ -759,18 +762,18 @@ module ChefProvisioningVsphere
       sleep_time = 1
       tries = 0
       max_tries = timeout > sleep_time ? timeout / sleep_time : 1
-      port = find_port(vm, bootstrap_options)
+      @vm_port_connect = find_port(vm, bootstrap_options)
       start_search_ip = true
       print 'Waiting for ipv4 address.'
-      @ip_connect ||= nil
+      @vm_ip_connect ||= nil
       while start_search_ip && (tries += 1) <= max_tries
         print '.'
         sleep sleep_time
-        @ip_connect = vm.guest.ipAddress.to_s if vm.guest.guestState == 'running' && vm.guest.toolsRunningStatus == 'guestToolsRunning' && !vm.guest.ipAddress.nil? && IPAddr.new(vm.guest.ipAddress).ipv4?
-        start_search_ip = false if open_port(@ip_connect, port)
+        @vm_ip_connect = vm.guest.ipAddress.to_s if vm.guest.guestState == 'running' && vm.guest.toolsRunningStatus == 'guestToolsRunning' && !vm.guest.ipAddress.nil? && IPAddr.new(vm.guest.ipAddress).ipv4?
+        start_search_ip = false if open_port(@vm_ip_connect, @vm_port_connect, sleep_time)
       end
       raise 'Timed out waiting for ipv4 address!' if tries > max_tries && !IPAddr.new(vm.guest.ipAddress).ipv4?
-      puts "\nFound valid ipv4 address! #{@ip_connect}"
+      puts "\nFound valid ipv4 address! #{@vm_ip_connect}"
       true
     end
 
@@ -790,19 +793,13 @@ module ChefProvisioningVsphere
     RESCUE_EXCEPTIONS_ON_ESTABLISH = [
       Errno::EACCES, Errno::EADDRINUSE, Errno::ECONNREFUSED, Errno::ETIMEDOUT,
       Errno::ECONNRESET, Errno::ENETUNREACH, Errno::EHOSTUNREACH, Errno::EPIPE,
-      Errno::EPERM, Errno::EFAULT, Errno::EIO,
+      Errno::EPERM, Errno::EFAULT, Errno::EIO, Errno::EHOSTDOWN,
       Net::SSH::Disconnect, Net::SSH::AuthenticationFailed, Net::SSH::ConnectionTimeout,
       Timeout::Error, IPAddr::AddressFamilyError
     ].freeze
 
-    def open_port(host, port)
-      if host.to_s.length > 7
-        sock = ::Socket.new(:INET, :STREAM)
-        raw = ::Socket.sockaddr_in(port, host)
-        true if sock.connect(raw)
-      else
-        false
-      end
+    def open_port(host, port, timeout = 5)
+      true if ::Socket.tcp(host, port, connect_timeout: timeout)
     rescue *RESCUE_EXCEPTIONS_ON_ESTABLISH
       false
     end
