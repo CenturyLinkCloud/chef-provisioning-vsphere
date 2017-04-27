@@ -733,7 +733,7 @@ module ChefProvisioningVsphere
         else
           @vm_ip_connect = bootstrap_options[:customization_spec][:ipsettings][:ip].to_s
           @vm_port_connect = find_port(vm, bootstrap_options)
-          print '.' until open_port(@vm_ip_connect, @vm_port_connect, 1)
+          print '.' until vm.guest.guestState == 'running' && vm.guest.toolsRunningStatus == 'guestToolsRunning' && !vm.guest.ipAddress.nil? && IPAddr.new(vm.guest.ipAddress).ipv4? && open_port(@vm_ip_connect, @vm_port_connect, 1)
           @vm_ip_connect.to_s
         end
       else
