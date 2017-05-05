@@ -273,6 +273,71 @@ driver:
             - 8.8.4.4
 ```
 
+You can also spin up multiple nodes, overwriting driver settings by platform or suite.
+
+```yaml
+driver:
+  name: vsphere
+  driver_options:
+    host: '1.2.3.5'
+    user: 'user'
+    password: 'pass'
+    insecure: true
+  machine_options:
+    start_timeout: 600
+    create_timeout: 600
+    ready_timeout: 90
+    bootstrap_options:
+      use_linked_clone: true
+      datacenter: 'DC'
+      template_name: 'UBUNTU1264'
+      vm_folder: 'TEST'
+      num_cpus: 2,
+      network_name:
+        - vlan_20_1.2.3.4
+      memory_mb: 4096
+      resource_pool: 'CLSTR/TEST'
+      ssh:
+        user: root
+        paranoid: false
+        password: password
+        port: 22
+      convergence_options:
+      customization_spec:
+        domain: local
+        ipsettings:
+          dnsServerList:
+            - 8.8.8.8
+            - 8.8.4.4
+
+platforms:
+  - name: one_disk
+  - name: two_disk
+    driver:
+      machine_options:
+        bootstrap_options:
+          additional_disk_size_gb:
+            - 10
+            - 10
+            - 10
+            - 10
+            
+suites:
+  - name: default
+    runlist:
+      - recipe[mycookbook::default]
+  - name: memory-intensive
+    runlist:
+      - recipe[mycookbook::intense]
+    driver:
+      machine_options:
+        bootstrap_options:
+          memory_mb: 8192
+
+```
+
+You can run then `kitchen diagnose` to verify the nodes and settings that will be used when you call `kitchen create`.
+
 ## Contributing
 
 1. Fork it ( https://github.com/[my-github-username]/chef-provisioning-vsphere/fork )
