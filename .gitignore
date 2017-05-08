@@ -5,3 +5,4 @@ Gemfile.lock
 .envrc
 .ruby-version
 my_cookbook
+.DS_Store

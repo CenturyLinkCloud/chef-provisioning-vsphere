@@ -1,7 +1,17 @@
 # Change Log
 
-## [1.1.1](https://github.com/chef-partners/chef-provisioning-vsphere/tree/1.1.1) (2017-04-20)
-[Full Changelog](https://github.com/chef-partners/chef-provisioning-vsphere/compare/v1.1.0...1.1.1)
+## [1.1.2](https://github.com/chef-partners/chef-provisioning-vsphere/tree/1.1.2) (2017-05-08)
+[Full Changelog](https://github.com/chef-partners/chef-provisioning-vsphere/compare/v1.1.1...1.1.2)
+
+**Merged pull requests:**
+
+- corrected winrm port assignment so it does not always equal 5986 [\#19](https://github.com/chef-partners/chef-provisioning-vsphere/pull/19) ([tuccimon](https://github.com/tuccimon))
+- Update README to cover multi-nodes in kitchen.yml [\#18](https://github.com/chef-partners/chef-provisioning-vsphere/pull/18) ([michaeltlombardi](https://github.com/michaeltlombardi))
+- Revert "Wait for ipv4 enhancement" [\#16](https://github.com/chef-partners/chef-provisioning-vsphere/pull/16) ([jjasghar](https://github.com/jjasghar))
+- Wait for ipv4 enhancement [\#14](https://github.com/chef-partners/chef-provisioning-vsphere/pull/14) ([jcalonsoh](https://github.com/jcalonsoh))
+
+## [v1.1.1](https://github.com/chef-partners/chef-provisioning-vsphere/tree/v1.1.1) (2017-04-20)
+[Full Changelog](https://github.com/chef-partners/chef-provisioning-vsphere/compare/v1.1.0...v1.1.1)
 
 **Merged pull requests:**
 
