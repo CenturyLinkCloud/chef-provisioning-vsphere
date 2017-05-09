@@ -24,8 +24,8 @@ Gem::Specification.new do |s|
   s.add_dependency 'rbvmomi', '~> 1.10'
   s.add_dependency 'chef-provisioning', '~> 2.0'
   s.add_dependency 'github_changelog_generator'
-  s.add_dependency 'chef', '~> 12'
-  s.add_dependency 'cheffish', '~> 4'
+  s.add_dependency 'cheffish', '>= 4.0', '< 14.0'
+  s.add_dependency 'chef', '>= 12.0', '< 14.0'
 
   s.add_development_dependency 'rspec'
   s.add_development_dependency 'rake'
